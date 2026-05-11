@@ -78,7 +78,9 @@ def generate_random_data(table_name, component_id):
         res[k] = round(v, 2) if isinstance(v, float) else v
     return res
 
-async def data_generator_loop():
+import time
+
+def data_generator_loop():
     global _generator_running
     _generator_running = True
     current_domain = None
@@ -86,7 +88,7 @@ async def data_generator_loop():
     while _generator_running:
         conn = get_db_connection()
         if not conn:
-            await asyncio.sleep(5)
+            time.sleep(5)
             continue
             
         init_tables(conn)
@@ -128,13 +130,13 @@ async def data_generator_loop():
                     except Exception as e:
                         STATE.pop(comp_id, None)
 
-                await asyncio.sleep(2.0)
+                time.sleep(2.0)
         except Exception as e:
             logger.error(f"Generator loop error: {e}")
         finally:
             cursor.close()
             conn.close()
-            await asyncio.sleep(2)
+            time.sleep(2)
 
 def stop_data_generator():
     global _generator_running

@@ -84,51 +84,59 @@ class PostgresConnector(BaseConnector):
             if not self.assignments:
                 continue
 
-            conn = self._get_connection()
-            if not conn:
-                if not outage_logged:
-                    logger.warning("PostgresConnector: Waiting for DB connection...")
-                    outage_logged = True
-                continue
-                
-            outage_logged = False
-            cursor = None  # always initialise so finally block is safe
+            def fetch_data():
+                conn = self._get_connection()
+                if not conn:
+                    return None, False
+                results = []
+                cursor = None
+                try:
+                    cursor = conn.cursor(cursor_factory=RealDictCursor)
+                    table_name = self.get_table_name()
+                    components_needed = set(kpi.get('component_id') for kpi in self.assignments.values() if kpi.get('component_id'))
+                    for comp_id in components_needed:
+                        query = f"SELECT * FROM {table_name} WHERE {self.component_id_col} = %s"
+                        params = [comp_id]
+                        last_ts = self.last_timestamps.get(comp_id)
+                        if last_ts:
+                            query += f" AND {self.timestamp_col} > %s"
+                            params.append(last_ts)
+                        query += f" ORDER BY {self.timestamp_col} DESC LIMIT 1"
+                        cursor.execute(query, tuple(params))
+                        row = cursor.fetchone()
+                        if row:
+                            results.append((comp_id, dict(row)))
+                finally:
+                    if cursor:
+                        cursor.close()
+                    conn.close()
+                return results, True
 
             try:
-                cursor = conn.cursor(cursor_factory=RealDictCursor)
-                table_name = self.get_table_name()
+                results, success = await asyncio.to_thread(fetch_data)
                 
-                # Fetch latest row for EACH mapped component uniquely
-                components_needed = set(kpi.get('component_id') for kpi in self.assignments.values() if kpi.get('component_id'))
+                if not success:
+                    if not outage_logged:
+                        logger.warning("PostgresConnector: Waiting for DB connection...")
+                        outage_logged = True
+                    continue
+                    
+                outage_logged = False
                 
-                for comp_id in components_needed:
-                    query = f"SELECT * FROM {table_name} WHERE {self.component_id_col} = %s"
-                    params = [comp_id]
-                    
-                    last_ts = self.last_timestamps.get(comp_id)
-                    if last_ts:
-                        query += f" AND {self.timestamp_col} > %s"
-                        params.append(last_ts)
-                        
-                    query += f" ORDER BY {self.timestamp_col} DESC LIMIT 1"
-                    
-                    cursor.execute(query, tuple(params))
-                    row = cursor.fetchone()
-                    
-                    if row:
-                        # logger.info(f"PostgresConnector: Found row for {comp_id}")
-                        self.last_timestamps[comp_id] = row.get(self.timestamp_col)
+                if results:
+                    for comp_id, row_dict in results:
+                        self.last_timestamps[comp_id] = row_dict.get(self.timestamp_col)
                         
                         # Process assigned KPIs for THIS specific component
                         comp_kpis = {k: v for k, v in self.assignments.items() if v.get('component_id') == comp_id}
                         
                         for kpi_id, kpi_config in comp_kpis.items():
                             formula = kpi_config.get("formula", "")
-                            value = self._evaluate_formula(formula, dict(row))
+                            value = self._evaluate_formula(formula, row_dict)
                             rules = kpi_config.get("rules", {})
                             status = self.compute_status(value, rules)
                             
-                            ts = row.get(self.timestamp_col) or datetime.now(timezone.utc)
+                            ts = row_dict.get(self.timestamp_col) or datetime.now(timezone.utc)
                             if ts.tzinfo is None:
                                 ts = ts.replace(tzinfo=timezone.utc)
                                 
@@ -151,7 +159,3 @@ class PostgresConnector(BaseConnector):
                             
             except Exception as e:
                 logger.error(f"PostgresConnector poll error: {e}")
-            finally:
-                if cursor:
-                    cursor.close()
-                conn.close()

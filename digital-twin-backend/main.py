@@ -123,8 +123,9 @@ async def startup():
     logger.info("📡 WebSocket broadcaster started — ws://localhost:8000/ws/kpis")
 
     from services.data_generator import data_generator_loop
-    asyncio.create_task(data_generator_loop(), name="data_generator")
-    logger.info("⚡ Background data generator started")
+    import threading
+    threading.Thread(target=data_generator_loop, daemon=True, name="data_generator").start()
+    logger.info("⚡ Background data generator started in a separate thread")
 
     await _start_connectors()
     logger.info("✅ Digital Twin Backend v2.1 ready — http://localhost:8000/docs")

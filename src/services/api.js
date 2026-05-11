@@ -4,15 +4,24 @@
  * In production, set VITE_API_URL env var to backend URL.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+const getToken = () => localStorage.getItem('auth_token');
 
 async function apiFetch(path, options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+    };
+    
+    const token = getToken();
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${BASE_URL}${path}`, {
         ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(options.headers || {}),
-        },
+        headers,
     });
     
     if (!res.ok) {
@@ -33,6 +42,27 @@ async function apiFetch(path, options = {}) {
     } catch(e) {
         throw new Error("Invalid JSON de l'API: " + txt.substring(0, 50));
     }
+}
+
+// ─── Auth API ─────────────────────────────────────────────────────────────────
+
+export async function loginUser(username, password) {
+    const params = new URLSearchParams();
+    params.append('username', username);
+    params.append('password', password);
+    
+    return apiFetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+    });
+}
+
+export async function registerUser(username, password) {
+    return apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, password })
+    });
 }
 
 // ─── Layout API ───────────────────────────────────────────────────────────────
@@ -147,6 +177,11 @@ export async function listTwins() {
 
 export async function getTwin(twinId) {
     return apiFetch(`/twins/${twinId}`);
+}
+
+export async function getSharedTwin(shareId, password) {
+    const params = new URLSearchParams({ password });
+    return apiFetch(`/twins/shared/${shareId}?${params.toString()}`);
 }
 
 export async function saveTwin(twinId, state) {

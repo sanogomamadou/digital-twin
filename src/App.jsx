@@ -14,9 +14,12 @@ import ConnectionsStep from './pages/ConnectionsStep';
 import KpiStep from './pages/KpiStep';
 import TwinView from './pages/TwinView';
 import SharedTwinView from './pages/SharedTwinView';
+import AuthOverlay from './components/AuthOverlay';
+import { useState } from 'react';
 
 export default function App() {
   const { currentStep } = useTwinStore();
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('auth_token'));
 
   const path = window.location.pathname;
   if (path.startsWith('/live/')) {
@@ -33,6 +36,10 @@ export default function App() {
         <SharedTwinView shareId={shareId} />
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthOverlay onAuthenticated={() => setIsAuthenticated(true)} />;
   }
 
   const renderPage = () => {

@@ -25,7 +25,7 @@ const WS_LABELS = {
 
 export default function SharedTwinView({ shareId }) {
     const {
-        loadTwinFromDb, kpis, components, connections,
+        loadSharedTwinFromDb, kpis, components, connections,
         updateKpiValues, activePanel, setActivePanel,
         selectedComponentId, selectComponent,
         twinName, selectedDomain
@@ -47,10 +47,10 @@ export default function SharedTwinView({ shareId }) {
         }
     }, [shareId]);
 
-    const handleLoadTwin = async (twinId) => {
+    const handleLoadTwin = async (sId, pw) => {
         setLoading(true);
         try {
-            await loadTwinFromDb(twinId, 5); // 5 is TwinView step
+            await loadSharedTwinFromDb(sId, pw, 5); // 5 is TwinView step
             setIsAuthenticated(true);
         } catch (e) {
             setError('Failed to load twin data. The link might be invalid or the twin was deleted.');
@@ -66,11 +66,8 @@ export default function SharedTwinView({ shareId }) {
         setLoading(true);
         setError(null);
         try {
-            const res = await verifyShareLink(shareId, pwToUse);
-            if (res && res.success && res.twin_id) {
-                sessionStorage.setItem(`share_pw_${shareId}`, pwToUse);
-                await handleLoadTwin(res.twin_id);
-            }
+            await handleLoadTwin(shareId, pwToUse);
+            sessionStorage.setItem(`share_pw_${shareId}`, pwToUse);
         } catch (e) {
             setError(e.message || 'Incorrect password');
             sessionStorage.removeItem(`share_pw_${shareId}`);

@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 from db.database import create_tables
-from routers import layout, kpis, analytics, twins, share
+from routers import layout, kpis, analytics, twins, share, auth
 from routers.stream import router as stream_router, kpi_broadcaster, manager
 from routers.data_source import router as source_router, get_source_state
 
@@ -52,6 +52,7 @@ app.include_router(kpis.router)
 app.include_router(analytics.router)
 app.include_router(twins.router)
 app.include_router(share.router)
+app.include_router(auth.router)
 app.include_router(stream_router)         # WebSocket + /stream/status
 app.include_router(source_router)         # /source/upload, /source/assign, etc.
 
@@ -121,12 +122,18 @@ async def startup():
     asyncio.create_task(kpi_broadcaster(), name="kpi_broadcaster")
     logger.info("📡 WebSocket broadcaster started — ws://localhost:8000/ws/kpis")
 
+    from services.data_generator import data_generator_loop
+    asyncio.create_task(data_generator_loop(), name="data_generator")
+    logger.info("⚡ Background data generator started")
+
     await _start_connectors()
     logger.info("✅ Digital Twin Backend v2.1 ready — http://localhost:8000/docs")
 
 
 @app.on_event("shutdown")
 async def shutdown():
+    from services.data_generator import stop_data_generator
+    stop_data_generator()
     for c in _connectors:
         await c.stop()
 

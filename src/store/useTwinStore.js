@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { listTwins, getTwin, saveTwin as apiSaveTwin, deleteTwin as apiDeleteTwin, listShareLinks, createShareLink, updateShareLink, deleteShareLink } from '../services/api';
+import { listTwins, getTwin, getSharedTwin, saveTwin as apiSaveTwin, deleteTwin as apiDeleteTwin, listShareLinks, createShareLink, updateShareLink, deleteShareLink } from '../services/api';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -635,6 +635,32 @@ const useTwinStore = create((set, get) => ({
             });
         } catch (e) {
             console.error('Failed to load twin:', e.message);
+            throw e;
+        }
+    },
+
+    loadSharedTwinFromDb: async (shareId, password, targetStep = 5) => {
+        try {
+            const state = await getSharedTwin(shareId, password);
+            const cellSize = 6;
+            set({
+                activeTwinId: state.id,
+                twinName: state.name,
+                selectedDomain: state.domain,
+                width: state.width,
+                length: state.length,
+                gridCols: state.gridCols,
+                gridRows: state.gridRows,
+                cellSize,
+                components: state.components || [],
+                connections: state.connections || [],
+                kpis: [],
+                kpiAssignments: state.kpiAssignments || [],
+                kpiHistory: [],
+                currentStep: targetStep,
+            });
+        } catch (e) {
+            console.error('Failed to load shared twin:', e.message);
             throw e;
         }
     },

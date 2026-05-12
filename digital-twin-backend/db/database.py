@@ -81,6 +81,31 @@ class ShareLinkDB(Base):
 def create_tables():
     Base.metadata.create_all(bind=engine)
     
+    # ── Auto-migration: ensure user_id column exists with correct type ──
+    if "postgresql" in DATABASE_URL:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            try:
+                # Check if user_id column exists
+                result = conn.execute(text(
+                    "SELECT data_type FROM information_schema.columns "
+                    "WHERE table_name='layout_states' AND column_name='user_id'"
+                )).fetchone()
+                if result is None:
+                    # Column doesn't exist, add it
+                    conn.execute(text("ALTER TABLE layout_states ADD COLUMN user_id INTEGER"))
+                    conn.commit()
+                    print("Migration: added user_id column to layout_states")
+                elif result[0] != 'integer':
+                    # Column exists but wrong type — fix it
+                    conn.execute(text(
+                        "ALTER TABLE layout_states ALTER COLUMN user_id TYPE INTEGER USING user_id::integer"
+                    ))
+                    conn.commit()
+                    print(f"Migration: converted user_id from {result[0]} to INTEGER")
+            except Exception as e:
+                print(f"Migration warning: {e}")
+    
     # Create default user if not exists
     db = SessionLocal()
     try:

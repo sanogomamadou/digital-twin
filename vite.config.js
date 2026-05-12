@@ -15,11 +15,6 @@ export default defineConfig({
       '/twins':     { target: 'http://127.0.0.1:8000', changeOrigin: true },
       '/share':     { target: 'http://127.0.0.1:8000', changeOrigin: true },
       '/ws':        { target: 'ws://127.0.0.1:8000', ws: true, changeOrigin: true },
-    },
-
-  },
-  define: {
-    'import.meta.env.VITE_API_URL': JSON.stringify(''),  // use proxy (empty = relative URLs)
   },
 })
 

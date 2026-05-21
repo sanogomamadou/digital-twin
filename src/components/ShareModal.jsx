@@ -45,31 +45,27 @@ export default function ShareModal({ twinId, onClose }) {
 
     return (
         <div style={{
-            position: 'fixed', inset: 0, zIndex: 2000,
-            background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
         }}>
-            <div className="glass" style={{
-                padding: '32px', borderRadius: '20px', width: '400px',
-                border: '1px solid var(--border)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
-                background: 'var(--surface-0)'
+            <div style={{
+                background: 'var(--bg-1)', border: '1px solid var(--border)',
+                borderRadius: '16px', width: '400px', padding: '24px',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                animation: 'fadeInUp 0.2s ease-out'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(72,101,242,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Share2 size={20} color="#4865f2" />
-                        </div>
-                        <div>
-                            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-0)' }}>Share Live View</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>Create a secure link</div>
-                        </div>
-                    </div>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-2)', cursor: 'pointer' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                    <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Share2 size={20} /> Partager le Jumeau Numérique
+                    </h2>
+                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-2)' }}>
                         <X size={20} />
                     </button>
                 </div>
 
                 {error && (
-                    <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: '13px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: '14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <AlertCircle size={16} /> {error}
                     </div>
                 )}
@@ -77,67 +73,69 @@ export default function ShareModal({ twinId, onClose }) {
                 {!generatedLink ? (
                     <>
                         <div style={{ marginBottom: '16px' }}>
-                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '8px' }}>Share Name</label>
+                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-1)' }}>Nom du partage</label>
                             <input
                                 type="text"
-                                className="input"
-                                placeholder="e.g. Manager View"
+                                placeholder="ex: Vue Manager"
                                 value={name}
                                 onChange={e => setName(e.target.value)}
-                                style={{ width: '100%', fontSize: '14px' }}
+                                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-1)', fontSize: '14px', boxSizing: 'border-box' }}
                             />
                         </div>
                         <div style={{ marginBottom: '24px' }}>
-                            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-1)', marginBottom: '8px' }}>Password</label>
+                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-1)' }}>Mot de passe</label>
                             <input
                                 type="password"
-                                className="input"
-                                placeholder="Set a secure password"
+                                placeholder="Définir un mot de passe sécurisé"
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
-                                style={{ width: '100%', fontSize: '14px' }}
+                                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-1)', fontSize: '14px', boxSizing: 'border-box' }}
                             />
                         </div>
                         
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                            <button className="btn btn-ghost" onClick={onClose} style={{ fontSize: '13px' }}>
-                                Cancel
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '24px' }}>
+                            <button onClick={onClose} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-1)', fontWeight: 600, cursor: 'pointer' }}>
+                                Annuler
                             </button>
-                            <button className="btn btn-primary" onClick={handleCreate} disabled={loading} style={{ fontSize: '13px' }}>
-                                {loading ? 'Creating...' : 'Create Link'}
+                            <button 
+                                onClick={handleCreate} 
+                                disabled={loading}
+                                style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: loading ? 0.6 : 1 }}
+                            >
+                                {loading ? 'Création en cours...' : 'Créer le lien'}
                             </button>
                         </div>
                     </>
                 ) : (
                     <>
-                        <p style={{ fontSize: '13px', color: 'var(--text-1)', marginBottom: '16px' }}>
-                            Your share link is ready. Anyone with this link and the password can view the live twin.
+                        <p style={{ fontSize: '14px', color: 'var(--text-1)', marginBottom: '16px' }}>
+                            Votre lien de partage est prêt. Toute personne disposant de ce lien et du mot de passe pourra visualiser le jumeau numérique.
                         </p>
                         
                         <div style={{
-                            display: 'flex', alignItems: 'center', gap: '8px', padding: '12px',
-                            background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '10px',
+                            display: 'flex', alignItems: 'center', gap: '12px', padding: '12px',
+                            background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: '8px',
                             marginBottom: '24px'
                         }}>
-                            <div style={{ flex: 1, fontSize: '13px', color: 'var(--text-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ flex: 1, fontSize: '14px', color: 'var(--text-0)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {generatedLink}
                             </div>
                             <button 
                                 onClick={handleCopy}
                                 style={{ 
-                                    padding: '6px 12px', borderRadius: '6px', border: 'none', 
+                                    padding: '8px 12px', borderRadius: '6px', border: 'none', 
                                     background: copied ? '#10d98d' : 'var(--accent)', color: '#fff', 
                                     cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-                                    fontSize: '12px', fontWeight: 600
+                                    fontSize: '13px', fontWeight: 600
                                 }}
                             >
-                                {copied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                                {copied ? <><Check size={16} /> Copié</> : <><Copy size={16} /> Copier</>}
                             </button>
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'center' }}>
-                            <button className="btn btn-ghost" onClick={onClose} style={{ fontSize: '13px' }}>
-                                Close
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '24px' }}>
+                            <button onClick={onClose} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-1)', fontWeight: 600, cursor: 'pointer' }}>
+                                Fermer
                             </button>
                         </div>
                     </>

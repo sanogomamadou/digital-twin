@@ -9,6 +9,7 @@ from models.schemas import (
 )
 from agents.nlq_agent import run_nlq_agent
 from agents.chart_agent import run_chart_agent
+from agents.report_agent import run_report_agent
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -49,6 +50,17 @@ async def chart_from_prompt(request: ChartFromPromptRequest):
     """
     try:
         return await run_chart_agent(request.prompt, request.data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/report")
+async def generate_report(request: dict):
+    """
+    Generate an AI PDF report text based on the current twin data.
+    """
+    try:
+        report_text = await run_report_agent(request)
+        return {"report": report_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

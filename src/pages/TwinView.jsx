@@ -20,6 +20,7 @@ import Chatbot from '../components/Chatbot';
 import useKpiWebSocket from '../hooks/useKpiWebSocket';
 import ShareModal from '../components/ShareModal';
 import { Share2 } from 'lucide-react';
+import ExportModal from '../components/ExportModal';
 
 const TABS = [
     { id: 'kpi',    label: '📊 KPIs' },
@@ -52,6 +53,7 @@ export default function TwinView() {
     const [saveOk, setSaveOk] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [shareModalOpen, setShareModalOpen] = useState(false);
+    const [exportModalOpen, setExportModalOpen] = useState(false);
 
     const [toast, setToast] = useState(null); // { type: 'success'|'error', msg }
 
@@ -74,11 +76,12 @@ export default function TwinView() {
         }
     };
 
-    const handleExport = async () => {
+    const handleExport = async (options) => {
+        setExportModalOpen(false);
         setExporting(true);
         try {
-            await exportDigitalTwin();
-            showToast('success', 'Digital Twin exported as ZIP');
+            await exportDigitalTwin(options);
+            showToast('success', 'Digital Twin exported successfully');
         } catch (e) {
             showToast('error', 'Export failed: ' + e.message);
         } finally {
@@ -113,6 +116,13 @@ export default function TwinView() {
 
     return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-0)' }}>
+
+            <ExportModal 
+                isOpen={exportModalOpen} 
+                onClose={() => setExportModalOpen(false)} 
+                onExport={handleExport} 
+                exporting={exporting} 
+            />
 
             {/* ── Save toast notification ─────────────────────────────────── */}
             {shareModalOpen && <ShareModal twinId={activeTwinId} onClose={() => setShareModalOpen(false)} />}
@@ -190,14 +200,14 @@ export default function TwinView() {
                     <Share2 size={13} /> Share
                 </button>
 
-                {/* Export ZIP */}
+                {/* Export */}
                 <button
                     className="btn btn-ghost"
                     style={{ fontSize: '11px', gap: '5px' }}
-                    onClick={handleExport}
+                    onClick={() => setExportModalOpen(true)}
                     disabled={exporting}
                 >
-                    {exporting ? <><Download size={13} style={{ animation: 'bounce 1s infinite' }} /> Packaging…</> : <><Download size={13} /> Export ZIP</>}
+                    {exporting ? <><Download size={13} style={{ animation: 'bounce 1s infinite' }} /> Packaging…</> : <><Download size={13} /> Export</>}
                 </button>
 
                 {/* Save twin */}

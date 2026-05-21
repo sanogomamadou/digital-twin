@@ -37,32 +37,6 @@ services:
       timeout: 5s
       retries: 10
 
-  # FastAPI Backend
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      network: host
-    container_name: digital_twin_backend
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      DATABASE_URL: postgresql://postgres:postgrespassword@postgres:5432/digital_twin
-      HOST: 0.0.0.0
-      PORT: 8000
-      DEBUG: "false"
-      FRONTEND_URL: http://localhost:5173
-    ports:
-      - "8000:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      postgres_telemetry:
-        condition: service_healthy
-    volumes:
-      - ./source_data:/app/source_data
-      - ./sample_data:/app/sample_data
 
 volumes:
   pgdata:

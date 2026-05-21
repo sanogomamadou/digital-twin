@@ -40,7 +40,18 @@ export default function Grid2D() {
                 cellMap[`${r}-${c}`] = comp;
     });
 
-    const getKpi = comp => kpis.find(k => comp?.kpiIds?.includes(k.id));
+    const getKpi = comp => {
+        if (!comp?.kpiIds || comp.kpiIds.length === 0) return null;
+        const compKpis = kpis.filter(k => comp.kpiIds.includes(k.id));
+        if (compKpis.length === 0) return null;
+        
+        const priority = { red: 3, orange: 2, green: 1 };
+        return compKpis.reduce((mostCritical, current) => {
+            const p1 = priority[mostCritical.status] || 0;
+            const p2 = priority[current.status] || 0;
+            return p2 > p1 ? current : mostCritical;
+        }, compKpis[0]);
+    };
 
     const handleMouseDown = (e, comp) => {
         e.preventDefault();

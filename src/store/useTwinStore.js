@@ -3,6 +3,8 @@ import { listTwins, getTwin, saveTwin as apiSaveTwin, deleteTwin as apiDeleteTwi
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export const DOMAINS = {
     factory: {
@@ -521,9 +523,9 @@ const useTwinStore = create((set, get) => ({
         set(s => ({ twins: [...s.twins, newTwin], activeTwinId: newTwin.id }));
     },
 
-    exportDigitalTwin: async () => {
+    exportDigitalTwin: async ({ exportJson, export3D, exportPdf } = { exportJson: true, export3D: true, exportPdf: false }) => {
         const { threeSceneRef, twinName, selectedDomain, components, kpis, connections } = get();
-        if (!threeSceneRef) throw new Error("3D Scene not ready.");
+        if (export3D && !threeSceneRef) throw new Error("3D Scene not ready.");
 
         // 1. Gather Data Snapshot
         const dataSnapshot = {
@@ -535,28 +537,210 @@ const useTwinStore = create((set, get) => ({
             kpis,
         };
 
+        const name = (twinName || "digital_twin").replace(/\s+/g, '_').toLowerCase();
+        let glbBuffer = null;
+        let pdfBlob = null;
+        let pdfFilename = `${name}_report.pdf`;
+        let jsonFilename = `${name}_data.json`;
+        let glbFilename = `${name}_scene.glb`;
+
         // 2. Export GLTF
-        const exporter = new GLTFExporter();
-        const exportScene = () => new Promise((resolve, reject) => {
-            exporter.parse(
-                threeSceneRef,
-                (gltf) => { resolve(gltf); },
-                (err) => { reject(err); },
-                { binary: true } // GLB format
-            );
-        });
+        if (export3D) {
+            const exporter = new GLTFExporter();
+            const exportScene = () => new Promise((resolve, reject) => {
+                exporter.parse(
+                    threeSceneRef,
+                    (gltf) => { resolve(gltf); },
+                    (err) => { reject(err); },
+                    { binary: true } // GLB format
+                );
+            });
+            glbBuffer = await exportScene();
+        }
 
-        const glbBuffer = await exportScene();
+        // 3. Export PDF
+        if (exportPdf) {
+            try {
+                const response = await fetch('http://localhost:8000/analytics/report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataSnapshot)
+                });
+                const resData = await response.json();
+                const aiReport = resData.report || "Analyse IA non disponible.";
 
-        // 3. Create ZIP
-        const zip = new JSZip();
-        zip.file("data.json", JSON.stringify(dataSnapshot, null, 2));
-        zip.file("scene.glb", glbBuffer);
+                const doc = new jsPDF();
+                const dxcPurple = [95, 37, 159]; // #5F259F
+                const dxcBlack = [26, 26, 26];
+
+                // Mappage du domaine en français
+                const domainFr = selectedDomain === 'factory' ? 'Usine' : selectedDomain === 'airport' ? 'Aéroport' : selectedDomain === 'warehouse' ? 'Entrepôt' : 'Inconnu';
+
+                // Header block with DXC Purple
+                doc.setFillColor(...dxcPurple);
+                doc.rect(0, 0, 210, 40, 'F');
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(24);
+                doc.setTextColor(255, 255, 255);
+                doc.text(`Rapport du Jumeau Numérique`, 14, 20);
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'normal');
+                doc.text(`Domaine: ${domainFr}  |  Date: ${new Date().toLocaleDateString('fr-FR')}`, 14, 30);
+                doc.text(`Composants: ${components.length}  |  Connexions: ${connections.length}`, 14, 36);
+
+                let currentY = 50;
+
+                if (typeof aiReport === 'object') {
+                    // Executive Summary
+                    doc.setFontSize(16);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...dxcPurple);
+                    doc.text("Résumé Exécutif", 14, currentY);
+                    currentY += 8;
+                    
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...dxcBlack);
+                    const execText = doc.splitTextToSize(aiReport.executiveSummary || "", 180);
+                    doc.text(execText, 14, currentY);
+                    currentY += (execText.length * 5) + 10;
+                    
+                    // Operational Status
+                    doc.setFontSize(16);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...dxcPurple);
+                    doc.text("Statut Opérationnel", 14, currentY);
+                    currentY += 8;
+                    
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...dxcBlack);
+                    const opText = doc.splitTextToSize(aiReport.operationalStatus || "", 180);
+                    doc.text(opText, 14, currentY);
+                    currentY += (opText.length * 5) + 10;
+                    
+                    // Key Insights
+                    if (aiReport.keyInsights && aiReport.keyInsights.length > 0) {
+                        doc.setFontSize(16);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setTextColor(...dxcPurple);
+                        doc.text("Insights Majeurs", 14, currentY);
+                        currentY += 8;
+                        
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(...dxcBlack);
+                        aiReport.keyInsights.forEach(insight => {
+                            const lines = doc.splitTextToSize(`• ${insight}`, 175);
+                            doc.text(lines, 14, currentY);
+                            currentY += (lines.length * 5) + 2;
+                        });
+                        currentY += 8;
+                    }
+                    
+                    // Recommendations
+                    if (aiReport.recommendations && aiReport.recommendations.length > 0) {
+                        if (currentY > 250) { doc.addPage(); currentY = 20; }
+                        doc.setFontSize(16);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setTextColor(...dxcPurple);
+                        doc.text("Recommandations Stratégiques", 14, currentY);
+                        currentY += 8;
+                        
+                        doc.setFontSize(11);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(...dxcBlack);
+                        aiReport.recommendations.forEach(rec => {
+                            const lines = doc.splitTextToSize(`• ${rec}`, 175);
+                            doc.text(lines, 14, currentY);
+                            currentY += (lines.length * 5) + 2;
+                        });
+                        currentY += 10;
+                    }
+                } else {
+                    // Fallback
+                    doc.setFontSize(16);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...dxcPurple);
+                    doc.text("Analyse IA", 14, currentY);
+                    currentY += 8;
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(...dxcBlack);
+                    const splitText = doc.splitTextToSize(String(aiReport), 180);
+                    doc.text(splitText, 14, currentY);
+                    currentY += (splitText.length * 5) + 10;
+                }
+
+                // KPIs Table
+                if (kpis.length > 0) {
+                    if (currentY > 230) { doc.addPage(); currentY = 20; }
+                    
+                    doc.setFontSize(16);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...dxcPurple);
+                    doc.text("Indicateurs Clés de Performance (KPIs)", 14, currentY);
+                    
+                    const tableData = kpis.map(k => {
+                        const comp = components.find(c => c.kpiIds && c.kpiIds.includes(k.id));
+                        const statusFr = k.status === 'red' ? 'CRITIQUE' : k.status === 'orange' ? 'ATTENTION' : 'NORMAL';
+                        return [
+                            k.name, 
+                            comp ? comp.name : 'Général',
+                            `${typeof k.value === 'number' ? k.value.toFixed(2) : k.value} ${k.unit || ''}`,
+                            statusFr
+                        ];
+                    });
+
+                    autoTable(doc, {
+                        startY: currentY + 6,
+                        head: [['Nom du KPI', 'Composant', 'Valeur Actuelle', 'Statut']],
+                        body: tableData,
+                        theme: 'grid',
+                        headStyles: { fillColor: dxcPurple, textColor: 255, fontStyle: 'bold' },
+                        styles: { font: 'helvetica', fontSize: 10 },
+                        didParseCell: function(data) {
+                            if (data.section === 'body' && data.column.index === 3) {
+                                if (data.cell.raw === 'CRITIQUE') data.cell.styles.textColor = [239, 68, 68];
+                                else if (data.cell.raw === 'ATTENTION') data.cell.styles.textColor = [245, 158, 11];
+                                else data.cell.styles.textColor = [16, 217, 141];
+                                data.cell.styles.fontStyle = 'bold';
+                            }
+                        }
+                    });
+                }
+                
+                pdfBlob = doc.output('blob');
+            } catch (err) {
+                console.error("Failed to generate PDF:", err);
+            }
+        }
 
         // 4. Download
-        const content = await zip.generateAsync({ type: "blob" });
-        const name = (twinName || "digital_twin").replace(/\s+/g, '_').toLowerCase();
-        saveAs(content, `${name}_export.zip`);
+        const selectedCount = [exportJson, export3D, exportPdf].filter(Boolean).length;
+        
+        if (selectedCount === 1) {
+            // Download a single file without ZIP
+            if (exportJson) {
+                const blob = new Blob([JSON.stringify(dataSnapshot, null, 2)], { type: "application/json" });
+                saveAs(blob, jsonFilename);
+            } else if (export3D && glbBuffer) {
+                const blob = new Blob([glbBuffer], { type: "model/gltf-binary" });
+                saveAs(blob, glbFilename);
+            } else if (exportPdf && pdfBlob) {
+                saveAs(pdfBlob, pdfFilename);
+            }
+        } else if (selectedCount > 1) {
+            // Create ZIP
+            const zip = new JSZip();
+            if (exportJson) zip.file(jsonFilename, JSON.stringify(dataSnapshot, null, 2));
+            if (export3D && glbBuffer) zip.file(glbFilename, glbBuffer);
+            if (exportPdf && pdfBlob) zip.file(pdfFilename, pdfBlob);
+
+            const content = await zip.generateAsync({ type: "blob" });
+            saveAs(content, `${name}_export.zip`);
+        }
     },
 
     // ─── DB-persisted twin CRUD ────────────────────────────────────────────────

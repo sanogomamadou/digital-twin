@@ -603,7 +603,15 @@ function ComponentMesh({ component, kpis, cellSize, selected, hovered, onSelect,
     const nativeW = nativeGridSize[0] * cellSize - 0.5;
     const nativeD = nativeGridSize[1] * cellSize - 0.5;
 
-    const kpi = kpis.find(k => component.kpiIds?.includes(k.id));
+    const componentKpis = kpis.filter(k => component.kpiIds?.includes(k.id));
+    const kpi = componentKpis.length > 0 
+        ? componentKpis.reduce((mostCritical, current) => {
+            const priority = { red: 3, orange: 2, green: 1 };
+            const p1 = priority[mostCritical.status] || 0;
+            const p2 = priority[current.status] || 0;
+            return p2 > p1 ? current : mostCritical;
+        }, componentKpis[0])
+        : null;
     const statusColor = kpi ? STATUS_COLORS[kpi.status] : (component.color || '#4865f2');
 
     const groupRef = useRef();

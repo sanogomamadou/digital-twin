@@ -70,21 +70,25 @@ export default function KpiStep() {
         setAiLoading(true);
         setError('');
         try {
-            const data = await proposeKpis(selectedDomain, columns);
+            const compList = components.map(c => ({ id: c.id, name: c.name }));
+            const data = await proposeKpis(selectedDomain, columns, compList);
             if (data && data.kpis) {
-                const newAssignments = data.kpis.map(k => ({
-                    kpi_id: `kpi_${Date.now()}_${Math.random().toString(36).substring(2,7)}`,
-                    component_id: components[0]?.id || '',
-                    kpi_name: k.kpi_name || 'AI KPI',
-                    formula: k.formula || '',
-                    unit: k.unit || '',
-                    rules: { 
-                        orange: [k.orange ?? null, null], 
-                        red: [k.red ?? null, null], 
-                        direction: k.direction || 'asc' 
-                    },
-                    interaction: k.interaction || 'pulse'
-                }));
+                const newAssignments = data.kpis.map(k => {
+                    const matchedComponent = components.find(c => c.id === k.target_machine_id) || components[0];
+                    return {
+                        kpi_id: `kpi_${Date.now()}_${Math.random().toString(36).substring(2,7)}`,
+                        component_id: matchedComponent?.id || '',
+                        kpi_name: k.kpi_name || 'AI KPI',
+                        formula: k.formula || '',
+                        unit: k.unit || '',
+                        rules: { 
+                            orange: [k.orange ?? null, null], 
+                            red: [k.red ?? null, null], 
+                            direction: k.direction || 'asc' 
+                        },
+                        interaction: k.interaction || 'pulse'
+                    };
+                });
                 setAssignments(prev => [...prev, ...newAssignments]);
             }
         } catch (err) {

@@ -427,11 +427,12 @@ def apply_assignments_sync(domain: str, assignments_list: list):
 class ProposeKpisRequest(BaseModel):
     domain: str
     columns: List[str]
+    components: Optional[List[Dict[str, str]]] = []
 
 @router.post("/propose_kpis")
 async def propose_kpis_endpoint(payload: ProposeKpisRequest):
     from agents.kpi_agent import propose_kpis
-    kpis = await propose_kpis(payload.domain, payload.columns)
+    kpis = await propose_kpis(payload.domain, payload.columns, payload.components)
     return {"kpis": kpis}
 
 @router.get("/status")

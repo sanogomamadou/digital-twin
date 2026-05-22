@@ -15,12 +15,13 @@ class KpiProposal(BaseModel):
     orange: float = Field(description="The threshold value for a Warning state.")
     red: float = Field(description="The critical threshold for a Red Alert state.")
     interaction: str = Field(description="'transition' for continuous stats, 'pulse' for alerts, 'glow' for efficiencies.")
+    target_machine_id: str = Field(description="The ID of the most appropriate machine from the provided components list for this KPI, or empty if none fits.")
 
 class KpiList(BaseModel):
     kpis: List[KpiProposal] = Field(description="List of exactly 3 to 5 brilliant KPIs.")
 
 KPI_SYSTEM_PROMPT = """You are an elite Data Scientist and Domain Architect specializing in Industry 4.0 Digital Twins.
-Your task is to analyze an industry `domain` and a list of available PostgreSQL `columns`, and engineer exactly 3 to 5 BRILLIANT, HIGH-VALUE Key Performance Indicators (KPIs).
+Your task is to analyze an industry `domain`, a list of available PostgreSQL `columns`, and a list of `components` (machines/assets), and engineer exactly 3 to 5 BRILLIANT, HIGH-VALUE Key Performance Indicators (KPIs).
 
 Do not just return the raw columns. You must deduce the physical meaning of the data and propose advanced metrics that operational managers actually care about.
 Depending on the domain, construct metrics such as:
@@ -29,11 +30,13 @@ Depending on the domain, construct metrics such as:
 - **Warehousing/Supply Chain**: Picking velocity, storage density, conveyor belt load factor, sorting accuracy.
 
 CRITICAL: YOU MUST ONLY USE EXACT COLUMN NAMES PROVIDED IN THE INPUT FOR YOUR FORMULAS. DO NOT HALLUCINATE COLUMN NAMES.
+Assign the most appropriate `target_machine_id` from the provided `components` list based on the nature of the KPI.
 """
 
-def fallback_kpi_proposals(columns: List[str]) -> List[Dict]:
+def fallback_kpi_proposals(columns: List[str], components: List[Dict[str, str]] = None) -> List[Dict]:
     """Fallback mocked KPIs if LLM is down."""
     mock_kpis = []
+    target_machine_id = components[0]["id"] if components else ""
     if columns:
         col1 = columns[0]
         col2 = columns[1] if len(columns) > 1 else columns[0]
@@ -44,7 +47,8 @@ def fallback_kpi_proposals(columns: List[str]) -> List[Dict]:
             "direction": "asc",
             "orange": 75,
             "red": 90,
-            "interaction": "pulse"
+            "interaction": "pulse",
+            "target_machine_id": target_machine_id
         })
         if col1 != col2:
             mock_kpis.append({
@@ -54,22 +58,26 @@ def fallback_kpi_proposals(columns: List[str]) -> List[Dict]:
                 "direction": "asc",
                 "orange": 150,
                 "red": 200,
-                "interaction": "transition"
+                "interaction": "transition",
+                "target_machine_id": target_machine_id
             })
     return mock_kpis
 
-async def propose_kpis(domain: str, columns: List[str]) -> List[Dict]:
+async def propose_kpis(domain: str, columns: List[str], components: List[Dict[str, str]] = None) -> List[Dict]:
     """Invoke the LLM to get proposed KPIs using structured output."""
+    if components is None:
+        components = []
+
     if not columns:
         return []
 
     if not has_real_llm():
-        return fallback_kpi_proposals(columns)
+        return fallback_kpi_proposals(columns, components)
 
     llm = get_llm()
     structured_llm = llm.with_structured_output(KpiList)
     
-    user_content = json.dumps({"domain": domain, "columns": columns}, indent=2)
+    user_content = json.dumps({"domain": domain, "columns": columns, "components": components}, indent=2)
     messages = [
         SystemMessage(content=KPI_SYSTEM_PROMPT),
         HumanMessage(content=f"Generate KPIs for:\n{user_content}")
@@ -80,4 +88,4 @@ async def propose_kpis(domain: str, columns: List[str]) -> List[Dict]:
         return [k.model_dump() for k in result.kpis]
     except Exception as e:
         print(f"Error in KPI structured output: {e}")
-        return fallback_kpi_proposals(columns)
+        return fallback_kpi_proposals(columns, components)

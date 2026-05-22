@@ -92,10 +92,10 @@ export async function getTelemetryStatus() {
     return apiFetch('/source/status');
 }
 
-export async function proposeKpis(domain, columns) {
+export async function proposeKpis(domain, columns, components = []) {
     return apiFetch('/source/propose_kpis', {
         method: 'POST',
-        body: JSON.stringify({ domain, columns }),
+        body: JSON.stringify({ domain, columns, components }),
     });
 }
 

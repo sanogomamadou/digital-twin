@@ -1,9 +1,23 @@
 """
-KPI Agent — Uses the specified LLM to propose KPIs based on the domain and available DB columns.
+KPI Agent — Uses structured output to propose KPIs based on the domain and available DB columns.
 """
 from typing import List, Dict
 import json
-from services.llm_service import llm_json_call
+from pydantic import BaseModel, Field
+from services.llm_service import get_llm, has_real_llm
+from langchain_core.messages import SystemMessage, HumanMessage
+
+class KpiProposal(BaseModel):
+    kpi_name: str = Field(description="A professional, actionable label (e.g., 'Thermal Efficiency').")
+    formula: str = Field(description="A mathematical formula EXACTLY matching the available columns. Use basic math operators: +, -, *, /.")
+    unit: str = Field(description="The strictly correct unit of measurement (e.g., '%', 'bar', '°C').")
+    direction: str = Field(description="'asc' if higher values are BAD, 'desc' if lower values are BAD.")
+    orange: float = Field(description="The threshold value for a Warning state.")
+    red: float = Field(description="The critical threshold for a Red Alert state.")
+    interaction: str = Field(description="'transition' for continuous stats, 'pulse' for alerts, 'glow' for efficiencies.")
+
+class KpiList(BaseModel):
+    kpis: List[KpiProposal] = Field(description="List of exactly 3 to 5 brilliant KPIs.")
 
 KPI_SYSTEM_PROMPT = """You are an elite Data Scientist and Domain Architect specializing in Industry 4.0 Digital Twins.
 Your task is to analyze an industry `domain` and a list of available PostgreSQL `columns`, and engineer exactly 3 to 5 BRILLIANT, HIGH-VALUE Key Performance Indicators (KPIs).
@@ -14,29 +28,10 @@ Depending on the domain, construct metrics such as:
 - **Airport**: Passenger throughput, average security wait times, baggage handling efficiency, gate turnaround times.
 - **Warehousing/Supply Chain**: Picking velocity, storage density, conveyor belt load factor, sorting accuracy.
 
-For each KPI, provide:
-- "kpi_name": A professional, actionable label (e.g., "Thermal Efficiency", "Pressure Drop Delta", "Throughput Velocity").
-- "formula": A mathematical formula EXACTLY matching the available columns. Use basic math operators: +, -, *, /. 
-   > Examples of good formulas: "(produced_units - defective_units) / produced_units * 100", "temp_out - temp_in", "fuel_consumed / distance_travelled".
-   > CRITICAL: YOU MUST ONLY USE EXACT COLUMN NAMES PROVIDED IN THE INPUT. DO NOT HALLUCINATE COLUMN NAMES.
-- "unit": The strictly correct unit of measurement for this derived value (e.g., "%", "bar", "°C", "units/hr").
-- "direction": "asc" if higher values are BAD (e.g., temperature getting too high means danger). "desc" if lower values are BAD (e.g., efficiency dropping below a certain % is bad).
-- "orange": The threshold value for a Warning state. Estimate a highly realistic industrial value.
-- "red": The critical threshold for a Red Alert state. Estimate a highly realistic industrial value.
-- "interaction": Choose the most logical visual behavior ("transition" for continuous stats like temperature, "pulse" for high-priority alerts, "glow" for efficiencies).
-
-Return a valid JSON object containing an array under the key "kpis".
-Example format:
-{
-  "kpis": [
-    {
-      "kpi_name": "Thermal Efficiency", "formula": "(energy_out / energy_in) * 100", "unit": "%", "direction": "desc", "orange": 85, "red": 75, "interaction": "glow"
-    }
-  ]
-}
+CRITICAL: YOU MUST ONLY USE EXACT COLUMN NAMES PROVIDED IN THE INPUT FOR YOUR FORMULAS. DO NOT HALLUCINATE COLUMN NAMES.
 """
 
-def fallback_kpi_proposals(domain: str, columns: List[str]) -> Dict:
+def fallback_kpi_proposals(columns: List[str]) -> List[Dict]:
     """Fallback mocked KPIs if LLM is down."""
     mock_kpis = []
     if columns:
@@ -61,22 +56,28 @@ def fallback_kpi_proposals(domain: str, columns: List[str]) -> Dict:
                 "red": 200,
                 "interaction": "transition"
             })
-    return {"kpis": mock_kpis}
+    return mock_kpis
 
 async def propose_kpis(domain: str, columns: List[str]) -> List[Dict]:
-    """Invoke the LLM to get proposed KPIs."""
+    """Invoke the LLM to get proposed KPIs using structured output."""
     if not columns:
         return []
 
-    user_message = json.dumps({
-        "domain": domain,
-        "columns": columns
-    }, indent=2)
+    if not has_real_llm():
+        return fallback_kpi_proposals(columns)
 
-    result = await llm_json_call(
-        KPI_SYSTEM_PROMPT,
-        user_message,
-        fallback_fn=lambda _: fallback_kpi_proposals(domain, columns)
-    )
-
-    return result.get("kpis", [])
+    llm = get_llm()
+    structured_llm = llm.with_structured_output(KpiList)
+    
+    user_content = json.dumps({"domain": domain, "columns": columns}, indent=2)
+    messages = [
+        SystemMessage(content=KPI_SYSTEM_PROMPT),
+        HumanMessage(content=f"Generate KPIs for:\n{user_content}")
+    ]
+    
+    try:
+        result = structured_llm.invoke(messages)
+        return [k.model_dump() for k in result.kpis]
+    except Exception as e:
+        print(f"Error in KPI structured output: {e}")
+        return fallback_kpi_proposals(columns)

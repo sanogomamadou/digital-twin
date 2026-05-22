@@ -117,11 +117,48 @@ export async function pushRealtimeKpi(componentId, kpiName, value, unit = '') {
 
 // ─── Analytics API ────────────────────────────────────────────────────────────
 
-export async function nlqQuery(question, { componentId, timeRange = '24h' } = {}) {
-    return apiFetch('/analytics/query', {
+export async function nlqQuery(question, { componentId, timeRange = '24h' } = {}, onThought = null) {
+    const res = await fetch(`${BASE_URL}/analytics/query`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question, componentId, timeRange }),
     });
+
+    if (!res.ok) {
+        throw new Error(`Erreur ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let result = null;
+    let buffer = '';
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop(); // Keep the last incomplete chunk in buffer
+        
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                try {
+                    const data = JSON.parse(line.substring(6));
+                    if (data.type === 'thought' && onThought) {
+                        onThought(data.content);
+                    } else if (data.type === 'result') {
+                        result = data;
+                    }
+                } catch (e) {
+                    console.error('SSE JSON Parse error', e, line);
+                }
+            }
+        }
+    }
+    
+    if (!result) throw new Error("No final result received from stream");
+    return result;
 }
 
 export async function chartFromPrompt(prompt, data) {

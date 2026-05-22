@@ -10,12 +10,14 @@ import re
 import uuid
 from typing import TypedDict, Annotated
 import operator
+from langgraph.graph import StateGraph, END
 
 from models.schemas import (
     LayoutStateSchema, ComponentSchema, ConnectionSchema,
-    LayoutAction, LayoutPromptResponse
+    LayoutAction, LayoutLLMResponse, LayoutPromptResponse
 )
-from services.llm_service import llm_json_call, has_real_llm
+from services.llm_service import get_llm, has_real_llm
+from langchain_core.messages import SystemMessage, HumanMessage
 
 # ─── Default component palettes per domain ────────────────────────────────────
 DOMAIN_DEFAULTS = {
@@ -45,13 +47,7 @@ DOMAIN_DEFAULTS = {
     },
 }
 
-# ─── LangGraph State ──────────────────────────────────────────────────────────
-class AgentState(TypedDict):
-    prompt: str
-    layout: dict
-    actions: Annotated[list, operator.add]
-    explanation: str
-    error: str | None
+
 
 
 # ─── Helper: find next free cell ──────────────────────────────────────────────
@@ -204,8 +200,9 @@ def find_closest_free_cell(components: list[dict], cols: int, rows: int, size: l
     return t_r, t_c # Fallback, let it overlap if grid is 100% full
 
 # ─── LLM system prompt ────────────────────────────────────────────────────────
-LAYOUT_SYSTEM_PROMPT = """You are an elite Digital Twin Spatial Architect AND a 3D modeling expert.
+LAYOUT_SYSTEM_PROMPT = """You are an elite Digital Twin Spatial Architect AND a Senior 3D Technical Artist specializing in industrial facility design.
 Given a natural language instruction and the current layout state (JSON), generate a JSON object with:
+- "spatial_reasoning_scratchpad": MANDATORY step-by-step geometric calculations
 - "actions": array of layout actions
 - "explanation": a concise, operational explanation of what you did.
 
@@ -224,67 +221,100 @@ ACTION FORMATS
 3. Move:   {"action":"move", "componentId":"<id>", "row":<int>, "col":<int>}
 4. Remove: {"action":"remove", "componentId":"<id>"}
 
-═══════════════════════════════════════════════════
-RULE #1: USE STANDARD TYPES FIRST
-═══════════════════════════════════════════════════
-If the requested object matches an `availableTypes` entry, use "Add standard". Do NOT create a custom component for paletteitems.
+═══════════════════════════════════════════════════════════════════════════
+RULE #1: COORDINATE SYSTEM & OVERFLOW PREVENTION (CRITICAL — READ CAREFULLY)
+═══════════════════════════════════════════════════════════════════════════
+The renderer converts your fractional values to world-space like this:
+  - Position:  world_pos = [pos_x * W, pos_y * H, pos_z * D]
+  - Box size:  world_size = [size_x * W, size_y * H, size_z * D]
+  - Cylinder:  world_radius = size[0] * min(W, D),  world_height = size[2] * H
+  - Sphere:    world_radius = size[0] * min(W, D)
+
+The component is CENTERED in its grid cell. So the valid fractional space is:
+  - X axis:  from -0.5 to +0.5  (0 = center)
+  - Z axis:  from -0.5 to +0.5  (0 = center)
+  - Y axis:  from  0.0 to  1.0  (0 = ground, 1 = top)
+
+### ABSOLUTE MAXIMUM SIZE VALUES (NEVER EXCEED THESE):
+  - BOX size_x: MAX 0.95 (centered part filling the cell). If offset, even smaller.
+  - BOX size_z: MAX 0.95
+  - CYLINDER/SPHERE/CONE radius: MAX 0.45 (radius, not diameter!)
+  - ANY size value ABOVE 1.0 is ALWAYS WRONG. The coordinate system uses fractions of 1.0.
+  - The gridSize [2,2] does NOT mean size values should be 2.0! Size values are ALWAYS fractions between 0.0 and 1.0.
+
+### OVERFLOW CHECK (do this for every part):
+  For a centered box (pos_x=0): size_x must be <= 1.0 (but prefer 0.95)
+  For an offset box (pos_x=0.2): size_x must be <= 0.6 (because 0.2 + 0.3 = 0.5)
+  General rule: |pos_x| + size_x/2 must be <= 0.5
+
+If this formula is violated, the part WILL visually overflow into neighboring grid cells!
+
+### VERTICAL STACKING:
+  - `pos_y` is the CENTER of the part, NOT the bottom.
+  - A part with height 0.2 resting on the ground: pos_y = 0.2 / 2 = 0.1
+  - A part stacked on top of a 0.2-high base: pos_y = 0.2 + (own_height / 2)
+
+═══════════════════════════════════════════════════════════════════════
+RULE #2: PROFESSIONAL 3D MODELING QUALITY (NON-NEGOTIABLE)
+═══════════════════════════════════════════════════════════════════════
+You are NOT building a toy. You are building an INDUSTRIAL-GRADE digital twin.
+
+MINIMUM STANDARDS:
+1. USE 8 TO 15 PRIMITIVES minimum per component. 5 parts = amateur. 10+ = professional.
+2. LAYER your object like a real machine:
+   - Heavy metal BASE (dark gray, high metalness)
+   - Structural FRAME / BODY (main color, medium metalness)
+   - Functional DETAILS: pipes, motors, control panels, sensors, valves, screens
+   - ACCENTS: status lights with emissive glow, warning labels, bolts, vents
+3. MATERIAL REALISM:
+   - Brushed steel:  metalness=0.85, roughness=0.25, color="#9ca3af"
+   - Cast iron base:  metalness=0.6, roughness=0.5, color="#374151"
+   - Painted metal body: metalness=0.4, roughness=0.35, color=<user's color>
+   - Control panel/screen: metalness=0.2, roughness=0.1, emissive="#1e40af", emissiveIntensity=0.5
+   - Warning/status light: emissive=<color>, emissiveIntensity=1.5
+   - Rubber/belt: metalness=0.05, roughness=0.9, color="#1a1a1a"
+4. VISUAL DEPTH: Use slightly different shades for adjacent parts. Never use the same color+material on two adjacent surfaces.
+5. FILL THE SPACE: The object must visually occupy at least 80% of its grid cell. Do NOT generate a tiny object in a big cell.
 
 ═══════════════════════════════════════════════════
-RULE #2: 3D MODELING FOR CUSTOM COMPONENTS
+RULE #3: CHAIN-OF-THOUGHT SCRATCHPAD (MANDATORY)
 ═══════════════════════════════════════════════════
-For custom components, you MUST generate a `mesh3D.parts` array that faithfully represents the REAL-WORLD physical shape of the object.
-Think like a 3D artist: decompose the object into simple primitives and assemble them.
-
-Each part in the array is a JSON object:
-{
-  "geo": "box" | "cylinder" | "sphere" | "cone" | "torus",
-  "pos": [x, y, z],    // Position as FRACTIONS of component width(x), height(y), depth(z). [0,0,0]=ground center.
-  "size": [...],        // Geometry dimensions as fractions (see below)
-  "rot": [rx, ry, rz],  // Rotation in DEGREES (optional, default [0,0,0])
-  "color": "#hex",      // Color of this specific part
-  "metalness": 0.0-1.0, // Metal look (optional, default 0.5)
-  "roughness": 0.0-1.0, // Surface roughness (optional, default 0.3)
-  "emissive": "#hex",   // Glow color (optional, for lights/screens)
-  "emissiveIntensity": 0.0-2.0, // Glow strength (optional)
-  "opacity": 0.0-1.0    // Transparency (optional, default 1.0)
-}
-
-Size conventions per geometry:
-- box:      [width_frac, height_frac, depth_frac]  (fractions of w, h, d)
-- cylinder: [radiusTop_frac, radiusBottom_frac, height_frac, segments]  (radius as fraction of min(w,d), height as fraction of h)
-- sphere:   [radius_frac, widthSegments, heightSegments]  (radius as fraction of min(w,d))
-- cone:     [radius_frac, height_frac, segments]
-- torus:    [radius_frac, tube_frac, radialSegments, tubularSegments]
+You MUST fill `spatial_reasoning_scratchpad` with your geometric calculations BEFORE generating actions.
+For each part, write:
+  "Part N (<name>): geo=<type>, size=[...], pos=[...]. Check: |pos_x| + half_width = ... ≤ 0.5 ✓"
 
 ═══════════════════════════════════════════════════
-EXAMPLES OF REAL-WORLD 3D MODELING
+EXAMPLE: Industrial CNC Lathe (12 parts, professional)
 ═══════════════════════════════════════════════════
-
-Robotic Arm:
 "parts": [
-  {"geo":"cylinder","pos":[0,0.08,0],"size":[0.35,0.4,0.15],"color":"#374151","metalness":0.6},
-  {"geo":"box","pos":[0,0.35,0],"size":[0.08,0.4,0.08],"color":"#3b82f6","metalness":0.7},
-  {"geo":"sphere","pos":[0,0.55,0],"size":[0.06],"color":"#9ca3af","metalness":0.8},
-  {"geo":"box","pos":[0.12,0.7,0],"size":[0.06,0.3,0.06],"rot":[0,0,-30],"color":"#3b82f6","metalness":0.7},
-  {"geo":"sphere","pos":[0.2,0.85,0],"size":[0.05],"color":"#ef4444","emissive":"#ef4444","emissiveIntensity":0.8}
+  {"geo":"box","pos":[0,0.06,0],"size":[0.95,0.12,0.9],"color":"#1f2937","metalness":0.7,"roughness":0.4},
+  {"geo":"box","pos":[0,0.22,0],"size":[0.9,0.2,0.85],"color":"#374151","metalness":0.6,"roughness":0.35},
+  {"geo":"box","pos":[-0.15,0.5,0],"size":[0.55,0.4,0.75],"color":"#4b5563","metalness":0.5,"roughness":0.3},
+  {"geo":"cylinder","pos":[0.2,0.5,0],"size":[0.15,0.15,0.35,24],"color":"#9ca3af","metalness":0.9,"roughness":0.15},
+  {"geo":"cylinder","pos":[0.2,0.5,0],"size":[0.08,0.08,0.42,16],"color":"#d1d5db","metalness":0.95,"roughness":0.1},
+  {"geo":"cone","pos":[0.2,0.72,0],"size":[0.06,0.12,12],"color":"#e5e7eb","metalness":0.9,"roughness":0.1},
+  {"geo":"box","pos":[-0.38,0.5,0.05],"size":[0.1,0.25,0.3],"color":"#111827","metalness":0.2,"roughness":0.1,"emissive":"#1e3a5f","emissiveIntensity":0.4},
+  {"geo":"box","pos":[-0.15,0.75,0],"size":[0.5,0.06,0.7],"color":"#6b7280","metalness":0.7,"roughness":0.25},
+  {"geo":"cylinder","pos":[-0.3,0.78,0.25],"size":[0.03,0.03,0.08,8],"color":"#374151","metalness":0.8},
+  {"geo":"cylinder","pos":[-0.3,0.78,-0.25],"size":[0.03,0.03,0.08,8],"color":"#374151","metalness":0.8},
+  {"geo":"sphere","pos":[0.35,0.78,0.3],"size":[0.03],"color":"#22c55e","emissive":"#22c55e","emissiveIntensity":1.5},
+  {"geo":"sphere","pos":[0.35,0.78,-0.3],"size":[0.03],"color":"#ef4444","emissive":"#ef4444","emissiveIntensity":1.0}
 ]
 
-Water Tank:
+═══════════════════════════════════════════════════
+EXAMPLE: Industrial Robotic Arm (10 parts, professional)
+═══════════════════════════════════════════════════
 "parts": [
-  {"geo":"cylinder","pos":[0,0.4,0],"size":[0.4,0.4,0.7],"color":"#9ca3af","metalness":0.7,"roughness":0.2},
-  {"geo":"sphere","pos":[0,0.82,0],"size":[0.4],"color":"#9ca3af","metalness":0.7},
-  {"geo":"cylinder","pos":[0,0.05,0],"size":[0.42,0.42,0.08],"color":"#374151","metalness":0.5},
-  {"geo":"box","pos":[0.3,0.3,0],"size":[0.04,0.5,0.04],"color":"#6b7280","metalness":0.6},
-  {"geo":"sphere","pos":[0.3,0.55,0],"size":[0.03],"color":"#ef4444","emissive":"#ef4444","emissiveIntensity":1.0}
-]
-
-Solar Panel:
-"parts": [
-  {"geo":"box","pos":[0,0.04,0],"size":[0.9,0.02,0.9],"color":"#1e3a5f","metalness":0.9,"roughness":0.1},
-  {"geo":"box","pos":[0,0.06,0],"size":[0.88,0.01,0.88],"color":"#3b82f6","metalness":0.8,"roughness":0.05,"emissive":"#1e40af","emissiveIntensity":0.3},
-  {"geo":"cylinder","pos":[0,0.02,0],"size":[0.03,0.03,0.04],"color":"#6b7280","metalness":0.6},
-  {"geo":"box","pos":[-0.35,0.04,0],"size":[0.02,0.01,0.8],"color":"#9ca3af"},
-  {"geo":"box","pos":[0.35,0.04,0],"size":[0.02,0.01,0.8],"color":"#9ca3af"}
+  {"geo":"cylinder","pos":[0,0.04,0],"size":[0.4,0.42,0.08,32],"color":"#1f2937","metalness":0.8,"roughness":0.3},
+  {"geo":"cylinder","pos":[0,0.12,0],"size":[0.25,0.25,0.08,24],"color":"#374151","metalness":0.7,"roughness":0.25},
+  {"geo":"box","pos":[0,0.32,0],"size":[0.12,0.32,0.1],"color":"#f59e0b","metalness":0.45,"roughness":0.35},
+  {"geo":"sphere","pos":[0,0.5,0],"size":[0.06],"color":"#9ca3af","metalness":0.9,"roughness":0.15},
+  {"geo":"box","pos":[0.08,0.65,0],"size":[0.08,0.25,0.08],"rot":[0,0,-25],"color":"#f59e0b","metalness":0.45,"roughness":0.35},
+  {"geo":"sphere","pos":[0.15,0.77,0],"size":[0.04],"color":"#6b7280","metalness":0.85,"roughness":0.2},
+  {"geo":"box","pos":[0.22,0.85,0],"size":[0.06,0.15,0.06],"rot":[0,0,-10],"color":"#d97706","metalness":0.5,"roughness":0.3},
+  {"geo":"cylinder","pos":[0.28,0.9,0],"size":[0.02,0.02,0.08,12],"rot":[0,0,-90],"color":"#374151","metalness":0.95,"roughness":0.1},
+  {"geo":"sphere","pos":[0.32,0.9,0],"size":[0.025],"color":"#60a5fa","emissive":"#3b82f6","emissiveIntensity":2.0},
+  {"geo":"box","pos":[-0.25,0.12,0.2],"size":[0.12,0.16,0.12],"color":"#111827","metalness":0.2,"roughness":0.1,"emissive":"#0f172a","emissiveIntensity":0.3}
 ]
 
 ═══════════════════════════════════════════════════
@@ -292,7 +322,6 @@ SPATIAL RULES
 ═══════════════════════════════════════════════════
 - Grid: row=0, col=0 (top-left) to row=(gridRows-1), col=(gridCols-1).
 - "Top right" -> row=0, col=max.  "Next to X" -> col = X.col + X.width.
-- DO NOT overlap. The backend will auto-correct collisions, but try your best.
 - To reposition EXISTING items, use "move" with the exact componentId.
 
 Return ONLY valid JSON.
@@ -398,8 +427,17 @@ def apply_actions(state_dict: dict, actions: list[dict]) -> dict:
 # ─── Main entry point ─────────────────────────────────────────────────────────
 async def run_layout_agent(prompt: str, current_state: LayoutStateSchema) -> LayoutPromptResponse:
     state_dict = current_state.model_dump()
+    scratchpad = ""
 
-    if has_real_llm():
+    if not has_real_llm():
+        result = mock_parse_prompt(prompt, state_dict)
+        actions_raw = result.get("actions", [])
+        explanation = result.get("explanation", "Actions applied (mock).")
+        scratchpad = "Mock reasoning."
+    else:
+        llm = get_llm()
+        structured_llm = llm.with_structured_output(LayoutLLMResponse)
+        
         context = json.dumps({
             "domain": state_dict["domain"],
             "gridCols": state_dict["gridCols"],
@@ -408,20 +446,121 @@ async def run_layout_agent(prompt: str, current_state: LayoutStateSchema) -> Lay
             "connections": [{"id": c["id"], "sourceId": c["sourceId"], "targetId": c["targetId"]} for c in state_dict["connections"]],
             "availableTypes": list(DOMAIN_DEFAULTS.get(state_dict["domain"], DOMAIN_DEFAULTS["factory"]).keys()),
         }, indent=2)
-        result = await llm_json_call(
-            LAYOUT_SYSTEM_PROMPT,
-            f"Current layout:\n{context}\n\nInstruction: {prompt}",
-            fallback_fn=lambda p: mock_parse_prompt(p, state_dict),
-        )
-    else:
-        result = mock_parse_prompt(prompt, state_dict)
+        
+        class LayoutAgentState(TypedDict):
+            iterations: int
+            feedback: str
+            response: LayoutLLMResponse | None
+            error: str | None
+            
+        def generator_node(state: LayoutAgentState):
+            msgs = [
+                SystemMessage(content=LAYOUT_SYSTEM_PROMPT),
+                HumanMessage(content=f"Current layout:\n{context}\n\nInstruction: {prompt}")
+            ]
+            if state.get("feedback"):
+                msgs.append(HumanMessage(content=f"CRITIQUE PREVIOUS ATTEMPT:\n{state['feedback']}\n\nPlease fix the issues and generate a valid layout."))
+            try:
+                res = structured_llm.invoke(msgs)
+                return {"response": res, "iterations": state.get("iterations", 0) + 1, "error": None}
+            except Exception as e:
+                return {"error": str(e), "iterations": state.get("iterations", 0) + 1}
+                
+        def critic_node(state: LayoutAgentState):
+            res = state.get("response")
+            if not res:
+                return {"feedback": "No response generated."}
+            
+            feedback_issues = []
+            for i, action in enumerate(res.actions):
+                mesh = action.mesh3D
+                if mesh and getattr(mesh, "parts", None):
+                    for j, part in enumerate(mesh.parts):
+                        size = part.size if hasattr(part, "size") else []
+                        pos = part.pos if hasattr(part, "pos") else [0,0,0]
+                        for dim, p, s in zip(["x", "y", "z"], pos, size):
+                            if abs(p) + s / 2.0 > 0.5:
+                                feedback_issues.append(f"Action {i} (Part {j}): Overflows grid cell on axis {dim}. |{p}| + {s}/2 = {abs(p) + s/2.0} > 0.5.")
+            if feedback_issues:
+                return {"feedback": "\n".join(feedback_issues)}
+            return {"feedback": "OK"}
+            
+        def should_loop(state: LayoutAgentState):
+            if state.get("error"):
+                return END
+            if state.get("feedback") == "OK":
+                return END
+            if state.get("iterations", 0) >= 3:
+                return END
+            return "generator"
+            
+        workflow = StateGraph(LayoutAgentState)
+        workflow.add_node("generator", generator_node)
+        workflow.add_node("critic", critic_node)
+        workflow.set_entry_point("generator")
+        workflow.add_edge("generator", "critic")
+        workflow.add_conditional_edges("critic", should_loop, {"generator": "generator", END: END})
+        
+        app = workflow.compile()
+        try:
+            final_state = await app.ainvoke({"iterations": 0, "feedback": "", "response": None, "error": None})
+            
+            if final_state.get("error"):
+                raise ValueError(final_state["error"])
+                
+            res = final_state.get("response")
+            if res:
+                actions_raw = [a.model_dump(exclude_unset=True) for a in res.actions]
+                explanation = res.explanation
+                scratchpad = res.spatial_reasoning_scratchpad
+                if final_state.get("feedback") != "OK":
+                    scratchpad += "\n[Critic]: Max iterations reached. Applied hard clamps."
+            else:
+                raise ValueError("Empty response")
+                
+        except Exception as e:
+            error_str = str(e)
+            print(f"Error in layout agent reflection loop: {error_str}")
+            if "429" in error_str or "rate_limit" in error_str:
+                explanation = f"Groq rate limit reached. Please wait a moment and try again."
+                actions_raw = []
+                scratchpad = f"Rate limit error: {error_str[:200]}"
+            else:
+                result = mock_parse_prompt(prompt, state_dict)
+                actions_raw = result.get("actions", [])
+                explanation = result.get("explanation", "Actions applied (fallback).")
+                scratchpad = f"Error occurred: {error_str[:200]}"
 
-    actions_raw = result.get("actions", [])
-    explanation = result.get("explanation", "Actions applied.")
+    # ── Safety net: clamp oversized mesh3D parts ──
+    for action in actions_raw:
+        mesh = action.get("mesh3D")
+        if mesh and isinstance(mesh, dict):
+            parts = mesh.get("parts", [])
+            for part in parts:
+                geo = part.get("geo", "box")
+                size = part.get("size", [])
+                pos = part.get("pos", [0, 0, 0])
+                if geo == "box" and len(size) >= 1:
+                    # Clamp box width/depth to stay within bounds
+                    max_sx = 2 * (0.5 - abs(pos[0])) if len(pos) > 0 else 1.0
+                    max_sz = 2 * (0.5 - abs(pos[2])) if len(pos) > 2 else 1.0
+                    size[0] = min(size[0], max(max_sx, 0.1))
+                    if len(size) >= 3:
+                        size[2] = min(size[2], max(max_sz, 0.1))
+                elif geo in ("cylinder", "sphere", "cone") and len(size) >= 1:
+                    max_r = 0.5 - max(abs(pos[0]) if len(pos) > 0 else 0, abs(pos[2]) if len(pos) > 2 else 0)
+                    size[0] = min(size[0], max(max_r, 0.05))
+                    if geo == "cylinder" and len(size) >= 2:
+                        size[1] = min(size[1], max(max_r, 0.05))
 
     new_state_dict = apply_actions(state_dict, actions_raw)
 
     actions = [LayoutAction(**a) for a in actions_raw]
     new_state = LayoutStateSchema(**new_state_dict)
 
-    return LayoutPromptResponse(actions=actions, explanation=explanation, newState=new_state)
+    return LayoutPromptResponse(
+        spatial_reasoning_scratchpad=scratchpad,
+        actions=actions, 
+        explanation=explanation, 
+        newState=new_state
+    )

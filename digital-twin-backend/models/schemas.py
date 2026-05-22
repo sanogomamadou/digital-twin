@@ -5,6 +5,21 @@ from datetime import datetime
 
 # ─── Layout Schemas ────────────────────────────────────────────────────────────
 
+class Mesh3DPart(BaseModel):
+    geo: str = Field(description="'box', 'cylinder', 'sphere', 'cone', or 'torus'")
+    pos: list[float] = Field(description="[x, y, z] Positions as FRACTIONS. [0,0,0] is ground center.")
+    size: list[float] = Field(description="Dimensions. e.g. for box: [width, height, depth]")
+    rot: Optional[list[float]] = Field(default=[0,0,0], description="Rotation in degrees [rx, ry, rz]")
+    color: str = Field(description="Hex color code")
+    metalness: Optional[float] = Field(default=0.5, description="0.0 to 1.0")
+    roughness: Optional[float] = Field(default=0.3, description="0.0 to 1.0")
+    emissive: Optional[str] = Field(default=None, description="Hex glow color")
+    emissiveIntensity: Optional[float] = Field(default=0.0, description="0.0 to 2.0")
+    opacity: Optional[float] = Field(default=1.0, description="0.0 to 1.0")
+
+class Mesh3D(BaseModel):
+    parts: list[Mesh3DPart] = Field(description="At least 5 to 10 primitive parts making up the custom object.")
+
 class ComponentSchema(BaseModel):
     id: str
     name: str
@@ -17,7 +32,7 @@ class ComponentSchema(BaseModel):
     isCustom: bool = False
     icon: Optional[str] = None
     description: Optional[str] = None
-    mesh3D: Optional[dict] = None
+    mesh3D: Optional[Mesh3D] = None
 
 class ConnectionSchema(BaseModel):
     id: str
@@ -71,9 +86,17 @@ class LayoutAction(BaseModel):
     color: Optional[str] = None
     isCustom: Optional[bool] = None
     icon: Optional[str] = None
-    mesh3D: Optional[dict] = None
+    mesh3D: Optional[Mesh3D] = None
+
+class LayoutLLMResponse(BaseModel):
+    """Schema for what the LLM generates — does NOT include newState."""
+    spatial_reasoning_scratchpad: str = Field(description="Mandatory scratchpad to calculate Y-axis stacking geometrically and plan the exact coordinates before generating actions.")
+    actions: list[LayoutAction]
+    explanation: str
 
 class LayoutPromptResponse(BaseModel):
+    """Full API response including the computed newState."""
+    spatial_reasoning_scratchpad: str = Field(default="", description="Mandatory scratchpad to calculate Y-axis stacking geometrically and plan the exact coordinates before generating actions.")
     actions: list[LayoutAction]
     explanation: str
     newState: LayoutStateSchema
@@ -119,6 +142,18 @@ class ReferenceLine(BaseModel):
     stroke: str = "#ef4444"
     strokeDasharray: str = "5 5"
 
+class ChartLLMConfig(BaseModel):
+    """Schema for what the LLM generates — does NOT include data."""
+    chartType: str = Field(description="LineChart, AreaChart, BarChart, PieChart, ScatterChart, RadarChart, or ComposedChart")
+    title: str
+    xKey: str = "timestamp"
+    yLabel: Optional[str] = None
+    series: list[SeriesConfig] = []
+    referenceLines: list[ReferenceLine] = []
+    insight: str = ""
+    stacked: bool = False
+    gradient: bool = True
+
 class ChartConfig(BaseModel):
     chartType: str  # LineChart | AreaChart | BarChart | PieChart | ScatterChart | RadarChart | ComposedChart
     title: str
@@ -130,6 +165,12 @@ class ChartConfig(BaseModel):
     insight: str = ""
     stacked: bool = False
     gradient: bool = True
+
+class ReportRequest(BaseModel):
+    domain: str
+    kpis: list[dict]
+    components: list[dict] = []
+    connections: list[dict] = []
 
 class AnalyticsQueryRequest(BaseModel):
     question: str

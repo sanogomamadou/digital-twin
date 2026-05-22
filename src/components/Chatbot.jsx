@@ -11,6 +11,7 @@ export default function Chatbot() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
+  const [currentThought, setCurrentThought] = useState('');
   const [backendOnline, setBackendOnline] = useState(null); // null=checking
   const [timeRange, setTimeRange] = useState('24h');
   const bottomRef = useRef();
@@ -48,6 +49,7 @@ export default function Chatbot() {
     setInput('');
     const userMsg = { id: Date.now(), role: 'user', text: q, chart: null };
     setMessages(prev => [...prev, userMsg]);
+    setCurrentThought('Starting analysis...');
     setIsTyping(true);
 
     try {
@@ -56,7 +58,7 @@ export default function Chatbot() {
         const result = await nlqQuery(q, {
           componentId: selComp?.id,
           timeRange,
-        });
+        }, (thought) => setCurrentThought(thought));
         setMessages(prev => [...prev, {
           id: Date.now() + 1,
           role: 'assistant',
@@ -82,6 +84,7 @@ export default function Chatbot() {
       }]);
     } finally {
       setIsTyping(false);
+      setCurrentThought('');
       // Refresh suggestions
       if (backendOnline) getQuerySuggestions().then(s => setSuggestions(s.map(x => x.text))).catch(() => {});
     }
@@ -157,9 +160,13 @@ export default function Chatbot() {
         {isTyping && (
           <div style={{ display: 'flex' }}>
             <div style={{ padding: '10px 14px', borderRadius: '14px 14px 14px 4px', background: 'var(--bg-0)', border: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', color: 'var(--text-2)', marginRight: '4px' }}>🦙 Llama thinking</span>
-                {[0,1,2].map(i => <span key={i} style={{ width:'6px', height:'6px', borderRadius:'50%', background:'var(--accent)', animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }} />)}
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-1)', marginRight: '4px', fontStyle: 'italic' }}>
+                    {currentThought ? `🧠 ${currentThought}` : '🦙 Llama thinking'}
+                </span>
+                <div style={{display: 'flex', gap: '4px'}}>
+                    {[0,1,2].map(i => <span key={i} style={{ width:'6px', height:'6px', borderRadius:'50%', background:'var(--accent)', animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }} />)}
+                </div>
               </div>
             </div>
           </div>

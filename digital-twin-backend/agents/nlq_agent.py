@@ -1,205 +1,162 @@
 """
 NLQ Analytics Agent — converts natural language questions about KPIs
-into structured answers + chart configurations.
-
-Uses LangGraph ReAct pattern; falls back to rule-based analysis without LLM.
+into structured answers + chart configurations using a LangGraph ReAct Agent.
 """
 from __future__ import annotations
 import json
 from datetime import datetime
+from langchain_core.messages import SystemMessage, HumanMessage
+
 from models.schemas import (
     AnalyticsQueryRequest, AnalyticsQueryResponse,
     ChartConfig, SeriesConfig, ReferenceLine
 )
-from services.llm_service import llm_json_call, has_real_llm
 from services.data_service import (
-    compute_stats, detect_anomalies, infer_chart_type,
     records_to_chart_data, filter_by_time_range
 )
+from agents.tools import current_records_var
+from agents.graph_orchestrator import create_analytics_orchestrator
+from services.llm_service import has_real_llm
+from agents.utils import extract_json_from_text
+from agents.chart_agent import run_chart_agent
 
-# ─── Chart color palette ──────────────────────────────────────────────────────
-COLORS = ["#6395ff", "#10d98d", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#f97316"]
-
-# ─── LLM system prompt ────────────────────────────────────────────────────────
 NLQ_SYSTEM_PROMPT = """You are an expert analytics AI for a Digital Twin platform.
-Given a user question and KPI data (JSON), return a JSON object with:
-- "answer": string — direct, insightful answer (max 3 sentences, use numbers)
-- "chartType": one of LineChart|AreaChart|BarChart|PieChart|ScatterChart|RadarChart|ComposedChart
-- "title": chart title string
-- "insight": one key observation highlighted (for chart annotation)
-- "seriesKeys": list of KPI names to plot from the data
-- "referenceLines": optional [{y: value, label: "...", stroke: "#ef4444"}]
+You have access to tools to query KPI statistics, detect anomalies, view recent values, and a powerful `analyze_with_pandas` tool for custom scripts.
+You MUST use these tools to analyze the data to answer the user's question. For complex analytical queries (correlations, groupby, trends), heavily prefer writing custom Python using the `analyze_with_pandas` tool. 
 
-Be specific, analytical, and use actual values from the data.
-Return ONLY valid JSON, no markdown.
+CRITICAL INSTRUCTIONS:
+1. LANGUAGE: You MUST answer in the EXACT SAME LANGUAGE as the user's question (e.g., if the user speaks French, answer in French).
+2. DATA VISUALIZATION: NEVER put KPIs with vastly different units or scales (e.g., Percentages, Hertz, Bars) on the same LineChart or AreaChart, as it crushes the smaller values. If asked for a general overview, pick the 1 or 2 most critical KPIs to plot, or use a BarChart to compare their normalized stats.
+3. TONE: Be concise, analytical, and provide a true business synthesis rather than just listing numbers robotically.
+
+When you have gathered enough information, you MUST return your final answer as a raw JSON object containing exactly the following keys:
+- "answer": string — direct, insightful answer based on the tool results (max 3-4 sentences, use actual numbers, structured nicely).
+- "chart_instruction": string — a clear, natural language instruction for a dedicated Data Visualization Agent. Describe exactly what kind of chart would best illustrate your answer, what KPIs to plot, and any important reference lines (e.g. "Create a line chart comparing Pressure and Vibration over the last 24h, with a red reference line at 80%").
+
+CRITICAL: Your final response MUST be ONLY valid JSON, no markdown blocks, no ```json, no extra text.
 """
 
 
-# ─── Mock NLQ fallback ────────────────────────────────────────────────────────
-def mock_nlq_answer(question: str, records: list, stats_by_kpi: dict) -> dict:
-    q = question.lower()
-    kpi_names = list(stats_by_kpi.keys())
-
-    # Build answer from stats
-    if not stats_by_kpi:
-        return {
-            "answer": "No KPI data available for analysis. Please import data for your components first.",
-            "chartType": "BarChart",
-            "title": "No data available",
-            "insight": "",
-            "seriesKeys": [],
-            "referenceLines": [],
-        }
-
-    summaries = []
-    ref_lines = []
-    for kpi, stats in stats_by_kpi.items():
-        summaries.append(f"{kpi}: avg={stats.get('mean','N/A')}, max={stats.get('max','N/A')}, min={stats.get('min','N/A')}")
-        if stats.get("max") is not None:
-            ref_lines.append({"y": stats["p95"], "label": f"{kpi} P95", "stroke": "#f59e0b"})
-
-    answer = ""
-    if any(w in q for w in ("status", "statut", "état", "etat", "overview", "résumé", "resume")):
-        answer = f"System overview: {len(kpi_names)} KPIs monitored. " + "; ".join(summaries[:2]) + "."
-    elif any(w in q for w in ("anomaly", "anomalie", "alert", "alerte", "critical", "critique", "pic", "spike")):
-        all_anomalies = []
-        for r in records:
-            val = getattr(r, "value", None)
-            name = getattr(r, "kpi_name", "")
-            if val and name in stats_by_kpi:
-                s = stats_by_kpi[name]
-                if s.get("std", 0) > 0 and abs(val - s["mean"]) / s["std"] > 2.5:
-                    all_anomalies.append(f"{name}={val:.1f}")
-        if all_anomalies:
-            answer = f"Detected {len(all_anomalies)} anomalies: {', '.join(all_anomalies[:3])}."
-        else:
-            answer = "No significant anomalies detected within 2.5 standard deviations."
-    elif any(w in q for w in ("max", "maximum", "highest", "plus haut", "peak")):
-        best = max(stats_by_kpi.items(), key=lambda x: x[1].get("max", 0))
-        answer = f"The highest recorded value is {best[0]}={best[1]['max']} (avg={best[1]['mean']})."
-    elif any(w in q for w in ("min", "minimum", "lowest", "plus bas")):
-        worst = min(stats_by_kpi.items(), key=lambda x: x[1].get("min", float("inf")))
-        answer = f"The lowest recorded value is {worst[0]}={worst[1]['min']} (avg={worst[1]['mean']})."
-    elif any(w in q for w in ("average", "mean", "moyenne")):
-        answer = "KPI averages: " + ", ".join(f"{k}={v['mean']}" for k, v in list(stats_by_kpi.items())[:3]) + "."
-    elif any(w in q for w in ("trend", "évolution", "evolution", "over time")):
-        answer = f"Analyzing trends for {len(kpi_names)} KPIs. " + summaries[0] if summaries else "."
-    else:
-        answer = "Analysis complete. " + (summaries[0] if summaries else "No specific match found.")
-
-    chart_type = infer_chart_type(question, records)
-    title = f"KPI Analysis — {'All Components' if not any(w in q for w in kpi_names) else kpi_names[0]}"
-
-    return {
-        "answer": answer,
-        "chartType": chart_type,
-        "title": title,
-        "insight": summaries[0] if summaries else "",
-        "seriesKeys": kpi_names[:5],
-        "referenceLines": ref_lines[:2],
-    }
 
 
-# ─── Build ChartConfig from records + LLM/mock result ────────────────────────
-def build_chart_config(llm_result: dict, records: list, time_range: str) -> ChartConfig:
-    chart_type = llm_result.get("chartType", "AreaChart")
-    title = llm_result.get("title", "KPI Analysis")
-    series_keys = llm_result.get("seriesKeys", [])
-    ref_lines_raw = llm_result.get("referenceLines", [])
-    insight = llm_result.get("insight", "")
 
-    # Build chart data
-    data = records_to_chart_data(records)
-    if not data:
-        # If no time-series, build aggregation data
-        from collections import defaultdict
-        agg: dict[str, dict] = defaultdict(lambda: {"count": 0, "total": 0.0})
-        for r in records:
-            name = getattr(r, "kpi_name", "value")
-            val = getattr(r, "value", 0)
-            agg[name]["count"] += 1
-            agg[name]["total"] += val
-        data = [{"name": k, "value": round(v["total"] / v["count"], 2) if v["count"] else 0}
-                for k, v in agg.items()]
-        chart_type = "BarChart"
-        series_keys = ["value"]
+import asyncio
+from typing import AsyncGenerator
 
-    # For PieChart: transform to name/value pairs
-    if chart_type == "PieChart" and data and "kpi_name" not in (data[0] if data else {}):
-        from collections import defaultdict
-        agg2: dict[str, list] = defaultdict(list)
-        for r in records:
-            agg2[getattr(r, "kpi_name", "KPI")].append(getattr(r, "value", 0))
-        data = [{"name": k, "value": round(sum(v) / len(v), 2)} for k, v in agg2.items()]
-        series_keys = ["value"]
-
-    series = [
-        SeriesConfig(key=k, name=k.replace("_", " ").title(), color=COLORS[i % len(COLORS)])
-        for i, k in enumerate(series_keys or (list(data[0].keys() - {"timestamp", "name"}) if data else []))
-    ]
-    ref_lines = [
-        ReferenceLine(y=rl.get("y"), label=rl.get("label", ""), stroke=rl.get("stroke", "#ef4444"))
-        for rl in ref_lines_raw
-    ]
-
-    return ChartConfig(
-        chartType=chart_type,
-        title=title,
-        xKey="timestamp" if "timestamp" in (data[0] if data else {}) else "name",
-        series=series,
-        referenceLines=ref_lines,
-        data=data[-100:],  # max 100 points
-        insight=insight,
-        gradient=True,
-    )
-
-
-# ─── Main entry point ─────────────────────────────────────────────────────────
-async def run_nlq_agent(
+async def run_nlq_agent_stream(
     request: AnalyticsQueryRequest,
     records: list,
-    db_query_id: int = 0
-) -> AnalyticsQueryResponse:
-    """
-    records: list of KpiDataDB ORM objects
-    """
-    # Filter by time range
+    db_query_id: int = 0,
+    db = None,
+    db_record = None
+) -> AsyncGenerator[str, None]:
+    
     records_dicts = [
         {"timestamp": getattr(r, "timestamp"), "value": getattr(r, "value"), "kpi_name": getattr(r, "kpi_name"), "component_id": getattr(r, "component_id")}
         for r in records
     ]
     filtered_dicts = filter_by_time_range(records_dicts, request.timeRange or "24h")
 
-    # Compute stats per KPI
-    from collections import defaultdict
-    by_kpi: dict[str, list] = defaultdict(list)
-    for r in filtered_dicts:
-        by_kpi[r["kpi_name"]].append(r)
-    stats_by_kpi = {k: compute_stats(v, "value") for k, v in by_kpi.items()}
+    # Mock fallback if no Groq
+    if not has_real_llm():
+        yield f'data: {json.dumps({"type": "thought", "content": "No API key found. Using fallback..."})}\n\n'
+        await asyncio.sleep(1)
+        resp = {
+            "type": "result",
+            "answer": "Groq API key is missing. Please configure it in .env to use the LangGraph agent.",
+            "chart": ChartConfig(chartType="BarChart", title="Missing LLM", xKey="name", series=[], data=[]).model_dump(),
+            "rawData": filtered_dicts[-50:],
+            "queryId": db_query_id
+        }
+        yield f'data: {json.dumps(resp)}\n\n'
+        return
 
-    if has_real_llm():
-        context = json.dumps({
-            "question": request.question,
-            "component_filter": request.componentId,
-            "time_range": request.timeRange,
-            "kpi_statistics": stats_by_kpi,
-            "sample_data": filtered_dicts[-20:] if filtered_dicts else [],
-        }, indent=2, default=str)
+    # 1. Set the context variable so tools can access the current data
+    token = current_records_var.set(records)
+    
+    try:
+        app = create_analytics_orchestrator()
+        
+        inputs = {
+            "messages": [
+                SystemMessage(content=NLQ_SYSTEM_PROMPT),
+                HumanMessage(content=f"Time range: {request.timeRange}. User Question: {request.question}")
+            ]
+        }
+        
+        config = {"configurable": {"thread_id": "global_session"}, "recursion_limit": 10}
+        
+        llm_result = None
+        
+        # Use astream_events to get real-time thoughts
+        try:
+            async for event in app.astream_events(inputs, config=config, version="v2"):
+                kind = event["event"]
+                if kind == "on_chat_model_stream":
+                    chunk = event["data"]["chunk"]
+                    if chunk.content:
+                        # Yield raw text stream if needed, or wait for tool calls
+                        pass
+                elif kind == "on_tool_start":
+                    tool_name = event["name"]
+                    yield f'data: {json.dumps({"type": "thought", "content": f"Using tool: {tool_name}..."})}\n\n'
+                elif kind == "on_tool_end":
+                    tool_name = event["name"]
+                    yield f'data: {json.dumps({"type": "thought", "content": f"Tool {tool_name} finished."})}\n\n'
+                elif kind == "on_chain_end":
+                    if event["name"] == "agent":
+                        # We might get final messages here
+                        pass
+                        
+            # Get final state to extract the JSON result
+            final_state = await app.ainvoke(inputs, config=config)
+            final_message = final_state["messages"][-1].content
+            llm_result = extract_json_from_text(final_message)
+            if not llm_result:
+                raise ValueError("Could not extract JSON from response.")
+                
+        except Exception as e:
+            print(f"Error in NLQ agent: {e}")
+            llm_result = {
+                "answer": f"Analysis failed (fallback): {str(e)}",
+                "chart_instruction": "Create a bar chart showing the error."
+            }
+            
+    finally:
+        current_records_var.reset(token)
 
-        llm_result = await llm_json_call(
-            NLQ_SYSTEM_PROMPT,
-            f"Context:\n{context}\n\nQuestion: {request.question}",
-            fallback_fn=lambda _: mock_nlq_answer(request.question, records, stats_by_kpi),
-        )
-    else:
-        llm_result = mock_nlq_answer(request.question, records, stats_by_kpi)
-
+    # 5. Build response
     answer = llm_result.get("answer", "Analysis complete.")
-    chart = build_chart_config(llm_result, records, request.timeRange or "24h")
+    chart_instruction = llm_result.get("chart_instruction", "Generate a basic chart for the data.")
+    
+    yield f'data: {json.dumps({"type": "thought", "content": "Generating dynamic chart..."})}\n\n'
+    
+    # 6. Delegate chart creation
+    class MockRecord:
+        def __init__(self, d):
+            self.timestamp = d["timestamp"]
+            self.value = d["value"]
+            self.kpi_name = d["kpi_name"]
+            
+    filtered_dicts.sort(key=lambda x: x["timestamp"] if x["timestamp"] else datetime.min)
+    
+    mock_records = [MockRecord(d) for d in filtered_dicts]
+    chart_data = records_to_chart_data(mock_records)
+    
+    chart = await run_chart_agent(chart_instruction, chart_data[-100:])
 
-    return AnalyticsQueryResponse(
-        answer=answer,
-        chart=chart,
-        rawData=filtered_dicts[-50:],
-        queryId=db_query_id,
-    )
+    final_resp = {
+        "type": "result",
+        "answer": answer,
+        "chart": chart.model_dump() if chart else None,
+        "rawData": filtered_dicts[-50:],
+        "queryId": db_query_id
+    }
+    
+    if db and db_record:
+        db_record.answer = answer
+        if chart:
+            db_record.chart_config_json = json.dumps(chart.model_dump(), default=str)
+        db.commit()
+    
+    yield f'data: {json.dumps(final_resp)}\n\n'

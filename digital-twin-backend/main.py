@@ -109,14 +109,11 @@ async def _start_connectors():
 async def startup():
     create_tables()
 
-    from services.llm_service import has_real_llm, OLLAMA_MODEL, USE_OLLAMA
-    if USE_OLLAMA:
-        if has_real_llm():
-            logger.info(f"🦙 LLM: Ollama [{OLLAMA_MODEL}]")
-        else:
-            logger.warning(f"🦙 LLM: Ollama not reachable — mock fallback (run: ollama serve && ollama pull {OLLAMA_MODEL})")
+    from services.llm_service import has_real_llm, GROQ_MODEL
+    if has_real_llm():
+        logger.info(f"🚀 LLM: Groq API [{GROQ_MODEL}]")
     else:
-        logger.info("🤖 LLM: OpenAI" if has_real_llm() else "🤖 LLM: mock fallback")
+        logger.warning(f"🚀 LLM: Groq API missing — mock fallback (add GROQ_API_KEY to .env)")
 
     asyncio.create_task(kpi_broadcaster(), name="kpi_broadcaster")
     logger.info("📡 WebSocket broadcaster started — ws://localhost:8000/ws/kpis")
@@ -134,15 +131,15 @@ async def shutdown():
 # ─── Root ─────────────────────────────────────────────────────────────────────
 @app.get("/")
 def root():
-    from services.llm_service import has_real_llm, USE_OLLAMA, OLLAMA_MODEL, OPENAI_MODEL
+    from services.llm_service import has_real_llm, GROQ_MODEL
     from connectors.postgres_connector import get_postgres_connector
     pc = get_postgres_connector()
     return {
         "name": "Digital Twin Platform API",
         "version": "2.2.0-PG",
         "docs": "/docs",
-        "llm_mode": "ollama" if (USE_OLLAMA and has_real_llm()) else ("openai" if has_real_llm() else "mock"),
-        "model": OLLAMA_MODEL if USE_OLLAMA else OPENAI_MODEL,
+        "llm_mode": "groq" if has_real_llm() else "mock",
+        "model": GROQ_MODEL,
         "ws_endpoint": "ws://localhost:8000/ws/kpis",
         "source_status": {
             "domain": pc.domain if pc else None,
@@ -161,9 +158,11 @@ def root():
 @app.get("/health")
 def health():
     from connectors.postgres_connector import get_postgres_connector
+    from services.llm_service import has_real_llm
     pc = get_postgres_connector()
     return {
         "status": "ok",
+        "llm_ready": has_real_llm(),
         "ws_clients": manager.client_count,
         "connectors": [c.name for c in _connectors if c._running],
     }

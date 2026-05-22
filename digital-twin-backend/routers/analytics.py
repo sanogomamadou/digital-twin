@@ -5,20 +5,21 @@ from db.database import get_db
 from db import crud
 from models.schemas import (
     AnalyticsQueryRequest, AnalyticsQueryResponse,
-    ChartFromPromptRequest, ChartConfig, QuerySuggestion
+    ChartFromPromptRequest, ChartConfig, QuerySuggestion, ReportRequest
 )
-from agents.nlq_agent import run_nlq_agent
+from fastapi.responses import StreamingResponse
+from agents.nlq_agent import run_nlq_agent_stream
 from agents.chart_agent import run_chart_agent
 from agents.report_agent import run_report_agent
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 
-@router.post("/query", response_model=AnalyticsQueryResponse)
+@router.post("/query")
 async def nlq_query(request: AnalyticsQueryRequest, db: Session = Depends(get_db)):
     """
     Ask a natural language question about KPI data.
-    Returns an answer + a chart configuration ready for Recharts.
+    Returns an answer + a chart configuration ready for Recharts as a SSE stream.
     """
     try:
         records = crud.get_kpi_data(
@@ -29,15 +30,10 @@ async def nlq_query(request: AnalyticsQueryRequest, db: Session = Depends(get_db
         # Save query to history (answer filled after agent)
         db_record = crud.save_query(db, question=request.question, answer="", chart_config=None)
 
-        response = await run_nlq_agent(request, records, db_query_id=db_record.id)
-
-        # Update history record with answer
-        db_record.answer = response.answer
-        if response.chart:
-            db_record.chart_config_json = json.dumps(response.chart.model_dump(), default=str)
-        db.commit()
-
-        return response
+        return StreamingResponse(
+            run_nlq_agent_stream(request, records, db_query_id=db_record.id, db=db, db_record=db_record),
+            media_type="text/event-stream"
+        )
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -54,12 +50,13 @@ async def chart_from_prompt(request: ChartFromPromptRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/report")
-async def generate_report(request: dict):
+async def generate_report(request: ReportRequest, db: Session = Depends(get_db)):
     """
-    Generate an AI PDF report text based on the current twin data.
+    Generate an AI PDF report text based on the current twin data and historical DB data.
     """
     try:
-        report_text = await run_report_agent(request)
+        records = crud.get_kpi_data(db, limit=5000)
+        report_text = await run_report_agent(request.model_dump(), records)
         return {"report": report_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

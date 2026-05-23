@@ -46,3 +46,39 @@ def save_layout_state(state: LayoutStateSchema, db: Session = Depends(get_db)):
     """Save/update layout state."""
     db_layout = crud.save_layout(db, state)
     return crud.layout_db_to_schema(db_layout)
+
+@router.get("/suggestions", response_model=list[str])
+async def get_layout_suggestions_endpoint(db: Session = Depends(get_db)):
+    """Generate domain-specific layout prompt suggestions."""
+    layout = crud.get_layout(db, "default")
+    domain = layout.domain if layout else "factory"
+    
+    domain = domain.lower()
+    if "airport" in domain:
+        return [
+            "Add a checkin desk 3x1",
+            "Add a security zone 2x2",
+            "Move terminal to row 0, col 0",
+            "Connect checkin desk to security zone",
+            "Generate a custom radar dome 3x3",
+            "Add a runway 6x2"
+        ]
+    elif "warehouse" in domain:
+        return [
+            "Add 2 warehouse racks",
+            "Add a picking zone 3x2",
+            "Move shipping dock to col 8",
+            "Connect reception dock to sorter",
+            "Generate a custom forklift 1x1",
+            "Add a conveyor 4x1"
+        ]
+    else:
+        return [
+            "Add 2 assembly stations",
+            "Move CNC machine to row 2",
+            "Connect assembly station to quality control",
+            "Add a conveyor belt 4x1",
+            "Generate a custom robotic arm 1x1",
+            "Add a warehouse rack 2x3"
+        ]
+

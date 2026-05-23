@@ -79,36 +79,35 @@ def get_history(limit: int = 20, db: Session = Depends(get_db)):
 
 
 @router.get("/suggestions", response_model=list[QuerySuggestion])
-def get_suggestions(db: Session = Depends(get_db)):
-    """Return smart NLQ suggestions based on available KPI data."""
-    summary = crud.get_all_kpi_summary(db)
-    suggestions = []
-
-    if not summary:
+async def get_suggestions(db: Session = Depends(get_db)):
+    """Return generic predefined NLQ suggestions based on the twin's domain."""
+    layout = crud.get_layout(db, "default")
+    domain = layout.domain.lower() if layout and layout.domain else "factory"
+    
+    if "airport" in domain:
         return [
-            QuerySuggestion(text="What is the system status?", category="summary"),
-            QuerySuggestion(text="Show me an overview dashboard", category="summary"),
+            QuerySuggestion(text="Show the trend of Passenger Flow over time", category="trend"),
+            QuerySuggestion(text="Compare Security Wait across all terminals", category="compare"),
+            QuerySuggestion(text="Are there any anomalies in Gate Utilization?", category="anomaly"),
+            QuerySuggestion(text="What is the average Baggage Delay?", category="summary"),
+            QuerySuggestion(text="Show me a distribution chart of Passenger Flow by zone", category="compare"),
+            QuerySuggestion(text="What is the overall airport status?", category="summary"),
         ]
-
-    kpi_names = list({r["kpi_name"] for r in summary})
-    comp_ids  = list({r["component_id"] for r in summary})
-
-    suggestions += [
-        QuerySuggestion(text=f"Show the trend of {kpi_names[0]} over time", category="trend"),
-        QuerySuggestion(text=f"Compare {kpi_names[0]} across all components", category="compare"),
-        QuerySuggestion(text="Are there any anomalies in my KPI data?", category="anomaly"),
-        QuerySuggestion(text=f"What is the average {kpi_names[0]}?", category="summary"),
-        QuerySuggestion(text=f"Show me a distribution chart of {kpi_names[0]}", category="compare"),
-    ]
-    if len(kpi_names) > 1:
-        suggestions.append(QuerySuggestion(
-            text=f"Show {kpi_names[0]} vs {kpi_names[1]} on the same chart",
-            category="compare"
-        ))
-    if comp_ids:
-        suggestions.append(QuerySuggestion(
-            text=f"What are the KPI stats for component {comp_ids[0]}?",
-            category="summary"
-        ))
-
-    return suggestions[:8]
+    elif "warehouse" in domain:
+        return [
+            QuerySuggestion(text="Show the trend of Pick Rate in the storage zones", category="trend"),
+            QuerySuggestion(text="Compare Dock Utilization across all docks", category="compare"),
+            QuerySuggestion(text="Are there any anomalies in Order Cycle Time?", category="anomaly"),
+            QuerySuggestion(text="What is the average Rack Fill Rate?", category="summary"),
+            QuerySuggestion(text="Show me a distribution chart of Pick Rate by area", category="compare"),
+            QuerySuggestion(text="What is the warehouse status?", category="summary"),
+        ]
+    else:
+        return [
+            QuerySuggestion(text="Show the trend of Machine Temperature over time", category="trend"),
+            QuerySuggestion(text="Compare Production Throughput across all machines", category="compare"),
+            QuerySuggestion(text="Are there any anomalies in Machine Downtime?", category="anomaly"),
+            QuerySuggestion(text="What is the average Quality Rate?", category="summary"),
+            QuerySuggestion(text="Show me a distribution chart of Production Throughput", category="compare"),
+            QuerySuggestion(text="What is the system status?", category="summary"),
+        ]

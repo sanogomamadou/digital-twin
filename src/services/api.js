@@ -44,6 +44,11 @@ export async function layoutPrompt(prompt, currentState) {
     });
 }
 
+export async function getLayoutSuggestions(domain) {
+    const query = domain ? `?domain=${encodeURIComponent(domain)}` : '';
+    return apiFetch(`/layout/suggestions${query}`);
+}
+
 export async function getLayoutState(layoutId = 'default') {
     return apiFetch(`/layout/state/${layoutId}`);
 }
@@ -172,8 +177,9 @@ export async function getQueryHistory(limit = 20) {
     return apiFetch(`/analytics/history?limit=${limit}`);
 }
 
-export async function getQuerySuggestions() {
-    return apiFetch('/analytics/suggestions');
+export async function getQuerySuggestions(domain) {
+    const query = domain ? `?domain=${encodeURIComponent(domain)}` : '';
+    return apiFetch(`/analytics/suggestions${query}`);
 }
 
 // ─── Twins CRUD API ───────────────────────────────────────────────────────────

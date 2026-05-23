@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { nlqQuery, getQuerySuggestions, checkBackendHealth } from '../services/api';
 import DynamicChart from './DynamicChart';
 import useTwinStore from '../store/useTwinStore';
+import { Bot } from 'lucide-react';
 
 export default function Chatbot() {
-  const { kpis, components, selectedComponentId } = useTwinStore();
+  const { kpis, components, selectedComponentId, selectedDomain } = useTwinStore();
   const [messages, setMessages] = useState([
-    { id: 0, role: 'assistant', text: '👋 Hello! I\'m your **Analytics AI** powered by **Llama 3** running locally.\n\nAsk me anything about your KPIs — I\'ll analyze the data and generate charts automatically.', chart: null },
+    { id: 0, role: 'assistant', text: '✨ Welcome to your **Analytics AI**!\n\nI\'m here to turn your KPI data into actionable insights. Ask me anything, and I\'ll generate beautiful charts on the fly.', chart: null },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -20,12 +21,12 @@ export default function Chatbot() {
   useEffect(() => {
     const check = () => checkBackendHealth().then(online => {
       setBackendOnline(online);
-      if (online) getQuerySuggestions().then(s => setSuggestions(s.map(x => x.text))).catch(() => {});
+      if (online) getQuerySuggestions(selectedDomain).then(s => setSuggestions(s.map(x => x.text))).catch(() => {});
     });
     check();
     const id = setInterval(check, 30_000);
     return () => clearInterval(id);
-  }, []);
+  }, [selectedDomain]);
 
   // Default suggestions when no data
   const defaultSuggestions = [
@@ -86,7 +87,7 @@ export default function Chatbot() {
       setIsTyping(false);
       setCurrentThought('');
       // Refresh suggestions
-      if (backendOnline) getQuerySuggestions().then(s => setSuggestions(s.map(x => x.text))).catch(() => {});
+      if (backendOnline) getQuerySuggestions(selectedDomain).then(s => setSuggestions(s.map(x => x.text))).catch(() => {});
     }
   };
 
@@ -97,17 +98,17 @@ export default function Chatbot() {
       {/* Header */}
       <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'linear-gradient(135deg,#4865f2,#f4723e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>🦙</div>
+          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'linear-gradient(135deg,#4865f2,#f4723e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: '#fff' }}><Bot size={18} /></div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              Analytics AI · Llama 3
+              Analytics AI
               <span style={{
                 fontSize: '9px', padding: '1px 6px', borderRadius: '10px', fontWeight: 600,
                 background: backendOnline === null ? 'rgba(100,116,139,0.2)' : backendOnline ? 'rgba(16,217,141,0.15)' : 'rgba(245,158,11,0.15)',
                 color: backendOnline === null ? '#64748b' : backendOnline ? '#10d98d' : '#f59e0b',
                 border: `1px solid ${backendOnline === null ? '#64748b40' : backendOnline ? '#10d98d40' : '#f59e0b40'}`,
               }}>
-                {backendOnline === null ? '⏳ connecting' : backendOnline ? '● live backend' : '○ local mode'}
+                {backendOnline === null ? '⏳ connecting' : backendOnline ? '●backend' : '○ local mode'}
               </span>
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-2)' }}>
@@ -161,9 +162,9 @@ export default function Chatbot() {
           <div style={{ display: 'flex' }}>
             <div style={{ padding: '10px 14px', borderRadius: '14px 14px 14px 4px', background: 'var(--bg-0)', border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-1)', marginRight: '4px', fontStyle: 'italic' }}>
-                    {currentThought ? `🧠 ${currentThought}` : '🦙 Llama thinking'}
-                </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-1)', marginRight: '4px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {currentThought ? `🧠 ${currentThought}` : <><Bot size={12} /> AI thinking</>}
+                  </span>
                 <div style={{display: 'flex', gap: '4px'}}>
                     {[0,1,2].map(i => <span key={i} style={{ width:'6px', height:'6px', borderRadius:'50%', background:'var(--accent)', animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }} />)}
                 </div>
@@ -188,7 +189,7 @@ export default function Chatbot() {
       {/* Input */}
       <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', flexShrink: 0 }}>
         <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey}
-          placeholder={backendOnline ? 'Ask about KPIs — Llama will analyze & chart…' : 'Ask about your KPIs…'}
+          placeholder={backendOnline ? 'Ask about KPIs — AI will analyze & chart…' : 'Ask about your KPIs…'}
           rows={2} style={{ flex: 1, background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: '8px', padding: '7px 10px', color: 'var(--text-0)', fontSize: '12px', resize: 'none', outline: 'none', fontFamily: 'inherit' }} />
         <button onClick={() => handleSend()} disabled={!input.trim()}
           style={{ width: '38px', height: '38px', borderRadius: '9px', flexShrink: 0, alignSelf: 'flex-end', background: input.trim() ? 'linear-gradient(135deg,#4865f2,#f4723e)' : 'var(--bg-0)', border: '1px solid var(--border)', cursor: input.trim() ? 'pointer' : 'not-allowed', fontSize: '15px', transition: 'all 0.15s' }}>

@@ -16,7 +16,7 @@ from services.data_service import (
 )
 from agents.tools import current_records_var
 from agents.graph_orchestrator import create_analytics_orchestrator
-from services.llm_service import has_real_llm
+from services.llm_service import get_llm, has_real_llm
 from agents.utils import extract_json_from_text
 from agents.chart_agent import run_chart_agent
 
@@ -108,8 +108,8 @@ async def run_nlq_agent_stream(
                         # We might get final messages here
                         pass
                         
-            # Get final state to extract the JSON result
-            final_state = await app.ainvoke(inputs, config=config)
+            # Get final state from checkpointer instead of invoking again
+            final_state = app.get_state(config).values
             final_message = final_state["messages"][-1].content
             llm_result = extract_json_from_text(final_message)
             if not llm_result:
@@ -160,3 +160,6 @@ async def run_nlq_agent_stream(
         db.commit()
     
     yield f'data: {json.dumps(final_resp)}\n\n'
+
+
+

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import useTwinStore, { DOMAINS } from '../store/useTwinStore';
 import Grid2D from '../components/Grid2D';
 import Scene3D from '../components/Scene3D';
-import { layoutPrompt, saveLayoutState, checkBackendHealth } from '../services/api';
+import { layoutPrompt, saveLayoutState, checkBackendHealth, getLayoutSuggestions } from '../services/api';
+import { Bot } from 'lucide-react';
 
 const VIEWS = ['2D Grid', '3D Preview', 'Split'];
 
@@ -21,9 +22,16 @@ export default function GridStep() {
   const domain = DOMAINS[selectedDomain];
   const blueprints = domain?.components || [];
 
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+
   useEffect(() => {
-    checkBackendHealth().then(setBackendOnline);
-  }, []);
+    checkBackendHealth().then(online => {
+      setBackendOnline(online);
+      if (online) {
+        getLayoutSuggestions(selectedDomain).then(setAiSuggestions).catch(() => {});
+      }
+    });
+  }, [selectedDomain]);
 
   const handleAdd = (type) => {
     addComponent(type);
@@ -131,7 +139,7 @@ export default function GridStep() {
         <button onClick={() => setShowAiBar(p => !p)} style={{ padding: '3px 11px', borderRadius: '7px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', flexShrink: 0,
           background: showAiBar ? 'rgba(72,101,242,0.15)' : 'transparent',
           color: showAiBar ? 'var(--accent)' : 'var(--text-2)' }}>
-          🦙 AI Layout
+          <Bot size={14} /> AI Layout
           <span style={{ fontSize: '8px', padding: '1px 4px', borderRadius: '4px', background: backendOnline ? 'rgba(16,217,141,0.2)' : 'rgba(245,158,11,0.2)', color: backendOnline ? '#10d98d' : '#f59e0b' }}>
             {backendOnline ? 'live' : 'mock'}
           </span>
@@ -146,7 +154,7 @@ export default function GridStep() {
       {showAiBar && (
         <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--border)', background: 'rgba(72,101,242,0.03)', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '18px', paddingTop: '4px' }}>🦙</span>
+            <div style={{ paddingTop: '4px', color: 'var(--accent)' }}><Bot size={18} /></div>
             <div style={{ flex: 1 }}>
               <textarea value={aiPrompt} onChange={e => setAiPrompt(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAiPrompt(); }}}
@@ -155,14 +163,10 @@ export default function GridStep() {
                 style={{ width: '100%', background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: '8px', padding: '7px 10px', color: 'var(--text-0)', fontSize: '12px', resize: 'none', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box' }} />
               {/* Quick example prompts */}
               <div style={{ display: 'flex', gap: '5px', marginTop: '5px', flexWrap: 'wrap' }}>
-                {[
-                  `Add a fuel tank 3x2`,
-                  `Add a radar dome`,
-                  `Add a control tower 2x3`,
-                  `Add a VIP lounge 4x2`,
-                  `Add a solar panel array 3x1`,
+                {(aiSuggestions.length > 0 ? aiSuggestions : [
+                  `Add a component`,
                   `Connect all components in sequence`,
-                ].map(ex => (
+                ]).map(ex => (
                   <button key={ex} onClick={() => setAiPrompt(ex)}
                     style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '12px', background: 'rgba(72,101,242,0.07)', border: '1px solid rgba(72,101,242,0.15)', color: 'var(--text-2)', cursor: 'pointer' }}>
                     {ex}

@@ -12,20 +12,19 @@
  */
 import { useEffect, useState } from 'react';
 import useTwinStore from '../store/useTwinStore';
-import { Save, CheckCircle, Download } from 'lucide-react';
+import { Save, CheckCircle, Download, Share2, Bell, Activity, LineChart, Bot } from 'lucide-react';
 import Scene3D from '../components/Scene3D';
 import KpiPanel from '../components/KpiPanel';
 import KpiCharts from '../components/KpiCharts';
 import Chatbot from '../components/Chatbot';
 import useKpiWebSocket from '../hooks/useKpiWebSocket';
 import ShareModal from '../components/ShareModal';
-import { Share2 } from 'lucide-react';
 import ExportModal from '../components/ExportModal';
 
 const TABS = [
-    { id: 'kpi',    label: '📊 KPIs' },
-    { id: 'charts', label: '📈 Charts' },
-    { id: 'chat',   label: '🦙 AI' },
+    { id: 'kpi',    label: <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}><Activity size={14} /> KPIs</div> },
+    { id: 'charts', label: <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}><LineChart size={14} /> Charts</div> },
+    { id: 'chat',   label: <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}><Bot size={14} /> AI</div> },
 ];
 
 const CAMERA_VIEWS = ['Isometric', 'Top', 'Front', 'Free'];
@@ -182,7 +181,7 @@ export default function TwinView() {
                 {/* Alerts bell */}
                 <button onClick={() => setAlertsOpen(o => !o)}
                     style={{ padding: '4px 10px', borderRadius: '8px', border: `1px solid ${critKpis.length > 0 ? '#ef4444' : 'var(--border)'}`, background: critKpis.length > 0 ? 'rgba(239,68,68,0.08)' : 'var(--bg-0)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 600, color: critKpis.length > 0 ? '#ef4444' : 'var(--text-2)' }}>
-                    🔔 {critKpis.length > 0 ? `${critKpis.length} Critical` : warnKpis.length > 0 ? `${warnKpis.length} Warn` : 'No alerts'}
+                    <Bell size={13} /> {critKpis.length > 0 ? `${critKpis.length} Critical` : warnKpis.length > 0 ? `${warnKpis.length} Warn` : 'No alerts'}
                 </button>
 
                 {/* Share Twin */}

@@ -6,6 +6,7 @@ import bcrypt
 
 from db.database import get_db, ShareLinkDB
 from models.schemas import ShareLinkCreate, ShareLinkUpdate, ShareLinkResponse, ShareLinkVerify
+from routers.auth import get_current_user
 
 router = APIRouter(prefix="/share", tags=["Share"])
 

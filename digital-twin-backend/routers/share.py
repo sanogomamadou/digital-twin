@@ -28,7 +28,7 @@ def get_password_hash(password):
 
 
 @router.post("", response_model=ShareLinkResponse)
-def create_share_link(link: ShareLinkCreate, db: Session = Depends(get_db)):
+def create_share_link(link: ShareLinkCreate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Create a new password-protected share link."""
     link_id = str(uuid.uuid4())
     hashed_password = get_password_hash(link.password)
@@ -36,6 +36,7 @@ def create_share_link(link: ShareLinkCreate, db: Session = Depends(get_db)):
     db_link = ShareLinkDB(
         id=link_id,
         twin_id=link.twin_id,
+        user_id=current_user.id,
         name=link.name,
         password_hash=hashed_password,
     )
@@ -52,9 +53,9 @@ def create_share_link(link: ShareLinkCreate, db: Session = Depends(get_db)):
 
 
 @router.get("", response_model=list[ShareLinkResponse])
-def list_share_links(db: Session = Depends(get_db)):
+def list_share_links(db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """List all active share links."""
-    links = db.query(ShareLinkDB).all()
+    links = db.query(ShareLinkDB).filter(ShareLinkDB.user_id == current_user.id).all()
     return [
         ShareLinkResponse(
             id=link.id,
@@ -66,9 +67,9 @@ def list_share_links(db: Session = Depends(get_db)):
 
 
 @router.put("/{share_id}", response_model=ShareLinkResponse)
-def update_share_link(share_id: str, update_data: ShareLinkUpdate, db: Session = Depends(get_db)):
+def update_share_link(share_id: str, update_data: ShareLinkUpdate, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Update a share link's name or password."""
-    db_link = db.query(ShareLinkDB).filter(ShareLinkDB.id == share_id).first()
+    db_link = db.query(ShareLinkDB).filter(ShareLinkDB.id == share_id, ShareLinkDB.user_id == current_user.id).first()
     if not db_link:
         raise HTTPException(status_code=404, detail="Share link not found")
         
@@ -89,9 +90,9 @@ def update_share_link(share_id: str, update_data: ShareLinkUpdate, db: Session =
 
 
 @router.delete("/{share_id}")
-def delete_share_link(share_id: str, db: Session = Depends(get_db)):
+def delete_share_link(share_id: str, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
     """Delete a share link."""
-    db_link = db.query(ShareLinkDB).filter(ShareLinkDB.id == share_id).first()
+    db_link = db.query(ShareLinkDB).filter(ShareLinkDB.id == share_id, ShareLinkDB.user_id == current_user.id).first()
     if not db_link:
         raise HTTPException(status_code=404, detail="Share link not found")
         
@@ -110,4 +111,12 @@ def verify_share_link(share_id: str, verify_data: ShareLinkVerify, db: Session =
     if not verify_password(verify_data.password, db_link.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect password")
         
-    return {"success": True, "twin_id": db_link.twin_id}
+    # Also return the full twin layout state so the frontend doesn't need to authenticate to load it
+    from db.crud import get_layout, layout_db_to_schema
+    db_layout = get_layout(db, db_link.user_id, db_link.twin_id)
+    if not db_layout:
+        raise HTTPException(status_code=404, detail="Twin not found or deleted")
+        
+    schema = layout_db_to_schema(db_layout)
+    
+    return {"success": True, "twin_id": db_link.twin_id, "state": schema.model_dump()}

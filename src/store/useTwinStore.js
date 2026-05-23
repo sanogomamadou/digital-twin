@@ -797,9 +797,9 @@ const useTwinStore = create((set, get) => ({
         }
     },
 
-    loadTwinFromDb: async (twinId, targetStep = 5) => {
+    loadTwinFromDb: async (twinId, targetStep = 5, preloadedState = null) => {
         try {
-            const state = await getTwin(twinId);
+            const state = preloadedState || await getTwin(twinId);
             const cellSize = 6;
             set({
                 activeTwinId: twinId,

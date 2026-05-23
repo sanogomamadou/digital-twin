@@ -47,10 +47,10 @@ export default function SharedTwinView({ shareId }) {
         }
     }, [shareId]);
 
-    const handleLoadTwin = async (twinId) => {
+    const handleLoadTwin = async (twinId, state) => {
         setLoading(true);
         try {
-            await loadTwinFromDb(twinId, 5); // 5 is TwinView step
+            await loadTwinFromDb(twinId, 5, state); // 5 is TwinView step, pass state directly
             setIsAuthenticated(true);
         } catch (e) {
             setError('Failed to load twin data. The link might be invalid or the twin was deleted.');
@@ -67,9 +67,9 @@ export default function SharedTwinView({ shareId }) {
         setError(null);
         try {
             const res = await verifyShareLink(shareId, pwToUse);
-            if (res && res.success && res.twin_id) {
+            if (res && res.success && res.twin_id && res.state) {
                 sessionStorage.setItem(`share_pw_${shareId}`, pwToUse);
-                await handleLoadTwin(res.twin_id);
+                await handleLoadTwin(res.twin_id, res.state);
             }
         } catch (e) {
             setError(e.message || 'Incorrect password');

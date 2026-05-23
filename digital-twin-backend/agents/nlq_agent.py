@@ -84,17 +84,30 @@ async def run_nlq_agent_stream(
             ]
         }
         
-        config = {"configurable": {"thread_id": "global_session"}, "recursion_limit": 10}
+        import uuid
+        config = {"configurable": {"thread_id": f"session_{uuid.uuid4()}"}, "recursion_limit": 10}
         
         llm_result = None
         
-        # Use ainvoke instead of astream_events to avoid asyncio event loop hangs on Windows
+        # Use astream(stream_mode="updates") instead of ainvoke or astream_events
+        # This is safe on Windows and still allows us to stream thoughts!
         try:
-            yield f'data: {json.dumps({"type": "thought", "content": "Running AI analysis..."})}\n\n'
-            # We yield control to the event loop so the SSE chunk flushes
-            await asyncio.sleep(0.1)
+            async for chunk in app.astream(inputs, config=config, stream_mode="updates"):
+                for node, values in chunk.items():
+                    if node == "agent":
+                        # The agent made a decision (either called a tool or finished)
+                        last_message = values["messages"][-1]
+                        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
+                            for tc in last_message.tool_calls:
+                                yield f'data: {json.dumps({"type": "thought", "content": f"Using tool: {tc.get("name")}..."})}\n\n'
+                                await asyncio.sleep(0.05)
+                    elif node == "tools":
+                        # Tools finished executing
+                        yield f'data: {json.dumps({"type": "thought", "content": "Tool finished. Analyzing results..."})}\n\n'
+                        await asyncio.sleep(0.05)
             
-            final_state = await app.ainvoke(inputs, config=config)
+            # Extract final result
+            final_state = app.get_state(config).values
             
             final_message = final_state["messages"][-1].content
             llm_result = extract_json_from_text(final_message)

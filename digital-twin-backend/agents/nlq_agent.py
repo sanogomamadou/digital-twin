@@ -88,28 +88,14 @@ async def run_nlq_agent_stream(
         
         llm_result = None
         
-        # Use astream_events to get real-time thoughts
+        # Use ainvoke instead of astream_events to avoid asyncio event loop hangs on Windows
         try:
-            async for event in app.astream_events(inputs, config=config, version="v2"):
-                kind = event["event"]
-                if kind == "on_chat_model_stream":
-                    chunk = event["data"]["chunk"]
-                    if chunk.content:
-                        # Yield raw text stream if needed, or wait for tool calls
-                        pass
-                elif kind == "on_tool_start":
-                    tool_name = event["name"]
-                    yield f'data: {json.dumps({"type": "thought", "content": f"Using tool: {tool_name}..."})}\n\n'
-                elif kind == "on_tool_end":
-                    tool_name = event["name"]
-                    yield f'data: {json.dumps({"type": "thought", "content": f"Tool {tool_name} finished."})}\n\n'
-                elif kind == "on_chain_end":
-                    if event["name"] == "agent":
-                        # We might get final messages here
-                        pass
-                        
-            # Get final state from checkpointer instead of invoking again
-            final_state = app.get_state(config).values
+            yield f'data: {json.dumps({"type": "thought", "content": "Running AI analysis..."})}\n\n'
+            # We yield control to the event loop so the SSE chunk flushes
+            await asyncio.sleep(0.1)
+            
+            final_state = await app.ainvoke(inputs, config=config)
+            
             final_message = final_state["messages"][-1].content
             llm_result = extract_json_from_text(final_message)
             if not llm_result:

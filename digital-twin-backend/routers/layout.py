@@ -7,50 +7,70 @@ from models.schemas import (
     LayoutStateSchema
 )
 from agents.layout_agent import run_layout_agent
+from routers.auth import get_current_user
+from db.database import UserDB
 
 router = APIRouter(prefix="/layout", tags=["Layout"])
 
 
 @router.post("/prompt", response_model=LayoutPromptResponse)
-async def layout_from_prompt(request: LayoutPromptRequest, db: Session = Depends(get_db)):
+async def layout_from_prompt(
+    request: LayoutPromptRequest, 
+    db: Session = Depends(get_db), 
+    current_user: UserDB = Depends(get_current_user)
+):
     """Convert a natural language prompt into layout actions and return the new state."""
     try:
         result = await run_layout_agent(request.prompt, request.currentState)
         # Persist new state to DB
-        crud.save_layout(db, result.newState)
+        crud.save_layout(db, current_user.id, result.newState)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/state/{layout_id}", response_model=LayoutStateSchema)
-def get_layout_state(layout_id: str = "default", db: Session = Depends(get_db)):
+def get_layout_state(
+    layout_id: str = "default", 
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user)
+):
     """Get saved layout state from DB."""
-    db_layout = crud.get_layout(db, layout_id)
+    db_layout = crud.get_layout(db, current_user.id, layout_id)
     if not db_layout:
         raise HTTPException(status_code=404, detail="Layout not found")
     return crud.layout_db_to_schema(db_layout)
 
 
 @router.get("/state", response_model=LayoutStateSchema)
-def get_default_layout(db: Session = Depends(get_db)):
+def get_default_layout(
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user)
+):
     """Get default layout state."""
-    db_layout = crud.get_layout(db, "default")
+    db_layout = crud.get_layout(db, current_user.id, "default")
     if not db_layout:
-        return LayoutStateSchema()
+        return LayoutStateSchema(id=f"default_{current_user.id}")
     return crud.layout_db_to_schema(db_layout)
 
 
 @router.put("/state", response_model=LayoutStateSchema)
-def save_layout_state(state: LayoutStateSchema, db: Session = Depends(get_db)):
+def save_layout_state(
+    state: LayoutStateSchema, 
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user)
+):
     """Save/update layout state."""
-    db_layout = crud.save_layout(db, state)
+    db_layout = crud.save_layout(db, current_user.id, state)
     return crud.layout_db_to_schema(db_layout)
 
 @router.get("/suggestions", response_model=list[str])
-async def get_layout_suggestions_endpoint(db: Session = Depends(get_db)):
+async def get_layout_suggestions_endpoint(
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user)
+):
     """Generate domain-specific layout prompt suggestions."""
-    layout = crud.get_layout(db, "default")
+    layout = crud.get_layout(db, current_user.id, "default")
     domain = layout.domain if layout else "factory"
     
     domain = domain.lower()

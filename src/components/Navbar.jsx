@@ -1,5 +1,6 @@
 import useTwinStore from '../store/useTwinStore';
-import { Home, ChevronRight } from 'lucide-react';
+import useAuthStore from '../store/useAuthStore';
+import { Home, ChevronRight, LogOut, User } from 'lucide-react';
 
 const STEPS = [
     { id: 1, label: 'Configure' },
@@ -11,6 +12,7 @@ const STEPS = [
 
 export default function Navbar() {
     const { currentStep, setStep } = useTwinStore();
+    const { user, logout } = useAuthStore();
     const isInWizard = currentStep >= 1;
 
     return (
@@ -81,15 +83,43 @@ export default function Navbar() {
 
             <div style={{ flex: isInWizard ? 0 : 1 }} />
 
-            {/* Right corner: DXC brand */}
-            <div style={{
-                padding: '4px 12px', borderRadius: '6px',
-                background: 'rgba(72,101,242,0.08)',
-                border: '1px solid rgba(72,101,242,0.15)',
-                fontSize: '11px', fontWeight: 700, color: 'var(--accent)',
-                letterSpacing: '0.06em',
-            }}>
-                DXC Technology
+            {/* User Area & DXC Brand */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {user && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            background: 'var(--bg-1)', padding: '4px 8px', borderRadius: '8px',
+                            border: '1px solid var(--border)', fontSize: '13px', color: 'var(--text-1)'
+                        }}>
+                            <User size={14} color="var(--accent)" />
+                            {user.username}
+                        </div>
+                        <button
+                            onClick={logout}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '4px',
+                                background: 'none', border: 'none', color: 'var(--text-3)',
+                                cursor: 'pointer', fontSize: '13px', padding: '4px', borderRadius: '4px'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.color = 'var(--red)'}
+                            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-3)'}
+                        >
+                            <LogOut size={14} />
+                            Déconnexion
+                        </button>
+                    </div>
+                )}
+                
+                <div style={{
+                    padding: '4px 12px', borderRadius: '6px',
+                    background: 'rgba(72,101,242,0.08)',
+                    border: '1px solid rgba(72,101,242,0.15)',
+                    fontSize: '11px', fontWeight: 700, color: 'var(--accent)',
+                    letterSpacing: '0.06em',
+                }}>
+                    DXC Technology
+                </div>
             </div>
         </nav>
     );

@@ -424,6 +424,12 @@ def apply_actions(state_dict: dict, actions: list[dict]) -> dict:
     return {**state_dict, "components": components, "connections": connections}
 
 
+class LayoutAgentState(TypedDict):
+    iterations: int
+    feedback: str
+    response: LayoutLLMResponse | None
+    error: str | None
+
 # ─── Main entry point ─────────────────────────────────────────────────────────
 async def run_layout_agent(prompt: str, current_state: LayoutStateSchema) -> LayoutPromptResponse:
     state_dict = current_state.model_dump()
@@ -447,12 +453,7 @@ async def run_layout_agent(prompt: str, current_state: LayoutStateSchema) -> Lay
             "availableTypes": list(DOMAIN_DEFAULTS.get(state_dict["domain"], DOMAIN_DEFAULTS["factory"]).keys()),
         }, indent=2)
         
-        class LayoutAgentState(TypedDict):
-            iterations: int
-            feedback: str
-            response: LayoutLLMResponse | None
-            error: str | None
-            
+
         def generator_node(state: LayoutAgentState):
             msgs = [
                 SystemMessage(content=LAYOUT_SYSTEM_PROMPT),

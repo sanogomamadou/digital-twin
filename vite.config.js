@@ -6,6 +6,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      '/auth':      { target: 'http://127.0.0.1:8000', changeOrigin: true },
       '/layout':    { target: 'http://127.0.0.1:8000', changeOrigin: true },
       '/kpis':      { target: 'http://127.0.0.1:8000', changeOrigin: true },
       '/analytics': { target: 'http://127.0.0.1:8000', changeOrigin: true },

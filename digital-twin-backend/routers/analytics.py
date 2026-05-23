@@ -11,12 +11,18 @@ from fastapi.responses import StreamingResponse
 from agents.nlq_agent import run_nlq_agent_stream
 from agents.chart_agent import run_chart_agent
 from agents.report_agent import run_report_agent
+from routers.auth import get_current_user
+from db.database import UserDB
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
 
 @router.post("/query")
-async def nlq_query(request: AnalyticsQueryRequest, db: Session = Depends(get_db)):
+async def nlq_query(
+    request: AnalyticsQueryRequest, 
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user)
+):
     """
     Ask a natural language question about KPI data.
     Returns an answer + a chart configuration ready for Recharts as a SSE stream.
@@ -28,7 +34,7 @@ async def nlq_query(request: AnalyticsQueryRequest, db: Session = Depends(get_db
             limit=2000,
         )
         # Save query to history (answer filled after agent)
-        db_record = crud.save_query(db, question=request.question, answer="", chart_config=None)
+        db_record = crud.save_query(db, current_user.id, question=request.question, answer="", chart_config=None)
 
         return StreamingResponse(
             run_nlq_agent_stream(request, records, db_query_id=db_record.id, db=db, db_record=db_record),
@@ -40,7 +46,10 @@ async def nlq_query(request: AnalyticsQueryRequest, db: Session = Depends(get_db
 
 
 @router.post("/chart", response_model=ChartConfig)
-async def chart_from_prompt(request: ChartFromPromptRequest):
+async def chart_from_prompt(
+    request: ChartFromPromptRequest,
+    current_user: UserDB = Depends(get_current_user)
+):
     """
     Given raw data and a prompt, generate the best Recharts chart config.
     """
@@ -50,7 +59,11 @@ async def chart_from_prompt(request: ChartFromPromptRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/report")
-async def generate_report(request: ReportRequest, db: Session = Depends(get_db)):
+async def generate_report(
+    request: ReportRequest, 
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user)
+):
     """
     Generate an AI PDF report text based on the current twin data and historical DB data.
     """
@@ -63,9 +76,13 @@ async def generate_report(request: ReportRequest, db: Session = Depends(get_db))
 
 
 @router.get("/history")
-def get_history(limit: int = 20, db: Session = Depends(get_db)):
+def get_history(
+    limit: int = 20, 
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user)
+):
     """Get the last N NLQ query history records."""
-    records = crud.get_query_history(db, limit)
+    records = crud.get_query_history(db, current_user.id, limit)
     return [
         {
             "id": r.id,
@@ -79,9 +96,12 @@ def get_history(limit: int = 20, db: Session = Depends(get_db)):
 
 
 @router.get("/suggestions", response_model=list[QuerySuggestion])
-async def get_suggestions(db: Session = Depends(get_db)):
+async def get_suggestions(
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user)
+):
     """Return generic predefined NLQ suggestions based on the twin's domain."""
-    layout = crud.get_layout(db, "default")
+    layout = crud.get_layout(db, current_user.id, "default")
     domain = layout.domain.lower() if layout and layout.domain else "factory"
     
     if "airport" in domain:

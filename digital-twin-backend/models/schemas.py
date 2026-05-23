@@ -3,6 +3,26 @@ from typing import Any, Optional
 from datetime import datetime
 
 
+# ─── Auth Schemas ──────────────────────────────────────────────────────────────
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class UserRead(BaseModel):
+    id: int
+    username: str
+    created_at: datetime
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
 # ─── Layout Schemas ────────────────────────────────────────────────────────────
 
 class Mesh3DPart(BaseModel):

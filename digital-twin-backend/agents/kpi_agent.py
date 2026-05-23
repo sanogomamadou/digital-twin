@@ -36,31 +36,40 @@ Assign the most appropriate `target_machine_id` from the provided `components` l
 def fallback_kpi_proposals(columns: List[str], components: List[Dict[str, str]] = None) -> List[Dict]:
     """Fallback mocked KPIs if LLM is down."""
     mock_kpis = []
-    target_machine_id = components[0]["id"] if components else ""
-    if columns:
-        col1 = columns[0]
-        col2 = columns[1] if len(columns) > 1 else columns[0]
+    if not columns:
+        return mock_kpis
+
+    for i, col in enumerate(columns[:4]):
+        machine_idx = i % len(components) if components else 0
+        target_machine_id = components[machine_idx]["id"] if components else ""
+        
         mock_kpis.append({
-            "kpi_name": "Base " + col1.title(),
-            "formula": col1,
+            "kpi_name": col.replace("_", " ").title(),
+            "formula": col,
             "unit": "units",
             "direction": "asc",
             "orange": 75,
             "red": 90,
-            "interaction": "pulse",
+            "interaction": "pulse" if i % 2 == 0 else "transition",
             "target_machine_id": target_machine_id
         })
-        if col1 != col2:
-            mock_kpis.append({
-                "kpi_name": f"{col1.title()} & {col2.title()} Sum",
-                "formula": f"{col1} + {col2}",
-                "unit": "units",
-                "direction": "asc",
-                "orange": 150,
-                "red": 200,
-                "interaction": "transition",
-                "target_machine_id": target_machine_id
-            })
+        
+    if len(columns) >= 2:
+        col1 = columns[0]
+        col2 = columns[1]
+        machine_idx = 4 % len(components) if components else 0
+        target_machine_id = components[machine_idx]["id"] if components else ""
+        mock_kpis.append({
+            "kpi_name": f"Ratio {col1}/{col2}",
+            "formula": f"{col1} / ({col2} + 0.1)",
+            "unit": "%",
+            "direction": "desc",
+            "orange": 2.0,
+            "red": 1.0,
+            "interaction": "glow",
+            "target_machine_id": target_machine_id
+        })
+        
     return mock_kpis
 
 async def propose_kpis(domain: str, columns: List[str], components: List[Dict[str, str]] = None) -> List[Dict]:

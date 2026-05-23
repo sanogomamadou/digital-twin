@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 from db.database import create_tables
-from routers import layout, kpis, analytics, twins, share
+from routers import layout, kpis, analytics, twins, share, auth
 from routers.stream import router as stream_router, kpi_broadcaster, manager
 from routers.data_source import router as source_router, get_source_state
 
@@ -47,6 +47,7 @@ app.add_middleware(
 
 
 # ─── Routers ──────────────────────────────────────────────────────────────────
+app.include_router(auth.router)
 app.include_router(layout.router)
 app.include_router(kpis.router)
 app.include_router(analytics.router)

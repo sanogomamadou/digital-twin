@@ -7,21 +7,24 @@ from models.schemas import LayoutStateSchema, KpiRecord
 
 # ─── Layout CRUD ──────────────────────────────────────────────────────────────
 
-def get_layout(db: Session, layout_id: str = "default") -> LayoutStateDB | None:
-    return db.query(LayoutStateDB).filter(LayoutStateDB.id == layout_id).first()
+def get_layout(db: Session, user_id: int, layout_id: str = "default") -> LayoutStateDB | None:
+    if layout_id == "default":
+        layout_id = f"default_{user_id}"
+    return db.query(LayoutStateDB).filter(LayoutStateDB.id == layout_id, LayoutStateDB.user_id == user_id).first()
 
 
-def list_twins(db: Session) -> list[LayoutStateDB]:
+def list_twins(db: Session, user_id: int) -> list[LayoutStateDB]:
     return (
         db.query(LayoutStateDB)
-        .filter(LayoutStateDB.id != "default")
+        .filter(LayoutStateDB.user_id == user_id)
+        .filter(~LayoutStateDB.id.startswith("default_"))
         .order_by(LayoutStateDB.updated_at.desc())
         .all()
     )
 
 
-def delete_twin(db: Session, twin_id: str) -> bool:
-    twin = db.query(LayoutStateDB).filter(LayoutStateDB.id == twin_id).first()
+def delete_twin(db: Session, user_id: int, twin_id: str) -> bool:
+    twin = db.query(LayoutStateDB).filter(LayoutStateDB.id == twin_id, LayoutStateDB.user_id == user_id).first()
     if not twin:
         return False
     db.delete(twin)
@@ -29,8 +32,11 @@ def delete_twin(db: Session, twin_id: str) -> bool:
     return True
 
 
-def save_layout(db: Session, state: LayoutStateSchema) -> LayoutStateDB:
-    existing = get_layout(db, state.id)
+def save_layout(db: Session, user_id: int, state: LayoutStateSchema) -> LayoutStateDB:
+    if state.id == "default":
+        state.id = f"default_{user_id}"
+        
+    existing = get_layout(db, user_id, state.id)
     if existing:
         existing.name = state.name
         existing.domain = state.domain
@@ -48,6 +54,7 @@ def save_layout(db: Session, state: LayoutStateSchema) -> LayoutStateDB:
     else:
         db_layout = LayoutStateDB(
             id=state.id,
+            user_id=user_id,
             name=state.name,
             domain=state.domain,
             width=state.width,
@@ -129,8 +136,9 @@ def delete_kpi_data(db: Session, component_id: str):
 
 # ─── Query History CRUD ───────────────────────────────────────────────────────
 
-def save_query(db: Session, question: str, answer: str, chart_config: dict | None) -> QueryHistoryDB:
+def save_query(db: Session, user_id: int, question: str, answer: str, chart_config: dict | None) -> QueryHistoryDB:
     record = QueryHistoryDB(
+        user_id=user_id,
         question=question,
         answer=answer,
         chart_config_json=json.dumps(chart_config) if chart_config else None,
@@ -141,5 +149,5 @@ def save_query(db: Session, question: str, answer: str, chart_config: dict | Non
     return record
 
 
-def get_query_history(db: Session, limit: int = 20) -> list[QueryHistoryDB]:
-    return db.query(QueryHistoryDB).order_by(QueryHistoryDB.created_at.desc()).limit(limit).all()
+def get_query_history(db: Session, user_id: int, limit: int = 20) -> list[QueryHistoryDB]:
+    return db.query(QueryHistoryDB).filter(QueryHistoryDB.user_id == user_id).order_by(QueryHistoryDB.created_at.desc()).limit(limit).all()

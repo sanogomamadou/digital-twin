@@ -14,9 +14,12 @@ import ConnectionsStep from './pages/ConnectionsStep';
 import KpiStep from './pages/KpiStep';
 import TwinView from './pages/TwinView';
 import SharedTwinView from './pages/SharedTwinView';
+import AuthPage from './pages/AuthPage';
+import useAuthStore from './store/useAuthStore';
 
 export default function App() {
   const { currentStep } = useTwinStore();
+  const { user } = useAuthStore();
 
   const path = window.location.pathname;
   if (path.startsWith('/live/')) {
@@ -46,6 +49,11 @@ export default function App() {
       default: return <HomePage />;
     }
   };
+
+  // If not live view and not authenticated, show Auth Page
+  if (!user && !path.startsWith('/live/')) {
+    return <AuthPage />;
+  }
 
   return (
     <div style={{

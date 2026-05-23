@@ -259,6 +259,7 @@ async def assign_columns(payload: AssignmentsPayload):
     _source_state["assignments"] = new_assignments
     _source_state["domain"] = payload.domain
     _source_state["streaming"] = True
+    _source_state["telemetry_table"] = f"{payload.domain}_data"
     _source_state["connected_at"] = _source_state.get("connected_at") or datetime.utcnow().isoformat()
 
     try:

@@ -5,17 +5,31 @@
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL || '';
+import useAuthStore from '../store/useAuthStore';
 
 async function apiFetch(path, options = {}) {
+    const token = useAuthStore.getState().token;
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+    };
+    
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch(`${BASE_URL}${path}`, {
         ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...(options.headers || {}),
-        },
+        headers,
     });
     
     if (!res.ok) {
+        if (res.status === 401 && !path.startsWith('/auth/')) {
+            useAuthStore.getState().logout();
+            throw new Error("Session expirée, veuillez vous reconnecter");
+        }
+
         let errStr = `Erreur ${res.status} ${res.statusText}`;
         try {
             const txt = await res.text();
@@ -33,6 +47,26 @@ async function apiFetch(path, options = {}) {
     } catch(e) {
         throw new Error("Invalid JSON de l'API: " + txt.substring(0, 50));
     }
+}
+
+// ─── Auth API ─────────────────────────────────────────────────────────────────
+
+export async function loginUser(username, password) {
+    return apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+    });
+}
+
+export async function registerUser(username, password) {
+    return apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+    });
+}
+
+export async function getMe() {
+    return apiFetch('/auth/me');
 }
 
 // ─── Layout API ───────────────────────────────────────────────────────────────
@@ -123,9 +157,13 @@ export async function pushRealtimeKpi(componentId, kpiName, value, unit = '') {
 // ─── Analytics API ────────────────────────────────────────────────────────────
 
 export async function nlqQuery(question, { componentId, timeRange = '24h' } = {}, onThought = null) {
+    const token = useAuthStore.getState().token;
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
     const res = await fetch(`${BASE_URL}/analytics/query`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ question, componentId, timeRange }),
     });
 

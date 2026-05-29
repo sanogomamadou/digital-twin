@@ -15,26 +15,39 @@ current_records_var = contextvars.ContextVar("current_records", default=[])
 
 @tool
 def get_kpi_list() -> str:
-    """Get the list of all available KPIs in the current context."""
+    """
+    Get the list of all available components and their associated KPI names in the current context.
+    Returns a JSON list of dicts: [{"component_id": str, "kpi_names": list[str]}].
+    Use this first to map component IDs (like 'gate_102_ri4nr') to their KPI names.
+    """
     try:
         records = current_records_var.get()
-        kpis = list(set([getattr(r, "kpi_name", "") for r in records]))
-        res = [k for k in kpis if k]
+        comp_to_kpis = {}
+        for r in records:
+            cid = getattr(r, "component_id", "")
+            kname = getattr(r, "kpi_name", "")
+            if cid and kname:
+                comp_to_kpis.setdefault(cid, set()).add(kname)
+        res = [{"component_id": cid, "kpi_names": list(kpis)} for cid, kpis in comp_to_kpis.items()]
         return json.dumps(res) if res else "[]"
     except Exception as e:
         return json.dumps({"error": str(e)})
 
 @tool
-def get_kpi_statistics(kpi_name: str) -> str:
-    """Get statistical data (min, max, mean, std) for a specific KPI."""
+def get_kpi_statistics(kpi_name: str, component_id: Optional[str] = None) -> str:
+    """
+    Get statistical data (min, max, mean, std) for a specific KPI.
+    Optionally filters by component_id. Do NOT pass component names (e.g. 'Gate 102') as kpi_name.
+    """
     try:
         records = current_records_var.get()
         filtered = [
             {"timestamp": getattr(r, "timestamp", None), "value": getattr(r, "value", 0), "kpi_name": getattr(r, "kpi_name", "")}
-            for r in records if getattr(r, "kpi_name", "") == kpi_name
+            for r in records
+            if getattr(r, "kpi_name", "") == kpi_name and (component_id is None or getattr(r, "component_id", "") == component_id)
         ]
         if not filtered:
-            return json.dumps({"error": f"No data found for KPI '{kpi_name}'"})
+            return json.dumps({"error": f"No data found for KPI '{kpi_name}'" + (f" and component '{component_id}'" if component_id else "")})
         
         stats = compute_stats(filtered, "value")
         return json.dumps(stats, default=json_serial)
@@ -42,13 +55,17 @@ def get_kpi_statistics(kpi_name: str) -> str:
         return json.dumps({"error": str(e)})
 
 @tool
-def detect_kpi_anomalies(kpi_name: str, threshold_std: float = 2.5) -> str:
-    """Detect anomalies (spikes or drops) for a specific KPI. Returns a list of anomalous records."""
+def detect_kpi_anomalies(kpi_name: str, component_id: Optional[str] = None, threshold_std: float = 2.5) -> str:
+    """
+    Detect anomalies (spikes or drops) for a specific KPI.
+    Optionally filters by component_id. Do NOT pass component names as kpi_name.
+    """
     try:
         records = current_records_var.get()
         filtered = [
             {"timestamp": getattr(r, "timestamp", None), "value": getattr(r, "value", 0), "kpi_name": getattr(r, "kpi_name", "")}
-            for r in records if getattr(r, "kpi_name", "") == kpi_name
+            for r in records
+            if getattr(r, "kpi_name", "") == kpi_name and (component_id is None or getattr(r, "component_id", "") == component_id)
         ]
         if not filtered:
             return "[]"
@@ -68,13 +85,17 @@ def detect_kpi_anomalies(kpi_name: str, threshold_std: float = 2.5) -> str:
         return json.dumps({"error": str(e)})
 
 @tool
-def get_recent_values(kpi_name: str, limit: int = 5) -> str:
-    """Get the most recent raw values for a specific KPI."""
+def get_recent_values(kpi_name: str, component_id: Optional[str] = None, limit: int = 5) -> str:
+    """
+    Get the most recent raw values for a specific KPI.
+    Optionally filters by component_id. Do NOT pass component names as kpi_name.
+    """
     try:
         records = current_records_var.get()
         filtered = [
             {"timestamp": getattr(r, "timestamp", None), "value": getattr(r, "value", 0), "kpi_name": getattr(r, "kpi_name", "")}
-            for r in records if getattr(r, "kpi_name", "") == kpi_name
+            for r in records
+            if getattr(r, "kpi_name", "") == kpi_name and (component_id is None or getattr(r, "component_id", "") == component_id)
         ]
         # Sort by timestamp descending
         filtered.sort(key=lambda x: x["timestamp"] if x["timestamp"] else datetime.min, reverse=True)

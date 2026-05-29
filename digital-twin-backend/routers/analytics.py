@@ -33,11 +33,38 @@ async def nlq_query(
             component_id=request.componentId,
             limit=2000,
         )
+        
+        # Detach records from database session to prevent DetachedInstanceError in async generator
+        from types import SimpleNamespace
+        serialized_records = [
+            SimpleNamespace(
+                timestamp=r.timestamp,
+                value=r.value,
+                kpi_name=r.kpi_name,
+                component_id=r.component_id,
+                unit=r.unit,
+                source=r.source
+            )
+            for r in records
+        ]
+
         # Save query to history (answer filled after agent)
         db_record = crud.save_query(db, current_user.id, question=request.question, answer="", chart_config=None)
 
+        # Get active layout to structure a persistent thread ID for the user's twin session
+        layout = crud.get_layout(db, current_user.id, "default")
+        active_twin_id = layout.id if layout else f"default_{current_user.id}"
+        thread_id = f"user_{current_user.id}_{active_twin_id}"
+
         return StreamingResponse(
-            run_nlq_agent_stream(request, records, db_query_id=db_record.id, db=db, db_record=db_record),
+            run_nlq_agent_stream(
+                request, 
+                serialized_records, 
+                db_query_id=db_record.id, 
+                db=db, 
+                db_record=db_record,
+                thread_id=thread_id
+            ),
             media_type="text/event-stream"
         )
 

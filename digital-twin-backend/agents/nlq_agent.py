@@ -43,12 +43,19 @@ CRITICAL: Your final response MUST be ONLY valid JSON, no markdown blocks, no ``
 import asyncio
 from typing import AsyncGenerator
 
+def json_serial(obj):
+    """JSON serializer for objects not serializable by default json code"""
+    if hasattr(obj, "isoformat"):
+        return obj.isoformat()
+    raise TypeError(f"Type {type(obj)} not serializable")
+
 async def run_nlq_agent_stream(
     request: AnalyticsQueryRequest,
     records: list,
     db_query_id: int = 0,
     db = None,
-    db_record = None
+    db_record = None,
+    thread_id: str = "default_session"
 ) -> AsyncGenerator[str, None]:
     
     records_dicts = [
@@ -68,7 +75,7 @@ async def run_nlq_agent_stream(
             "rawData": filtered_dicts[-50:],
             "queryId": db_query_id
         }
-        yield f'data: {json.dumps(resp)}\n\n'
+        yield f'data: {json.dumps(resp, default=json_serial)}\n\n'
         return
 
     # 1. Set the context variable so tools can access the current data
@@ -84,8 +91,7 @@ async def run_nlq_agent_stream(
             ]
         }
         
-        import uuid
-        config = {"configurable": {"thread_id": f"session_{uuid.uuid4()}"}, "recursion_limit": 10}
+        config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 10}
         
         llm_result = None
         
@@ -152,13 +158,22 @@ async def run_nlq_agent_stream(
         "queryId": db_query_id
     }
     
-    if db and db_record:
-        db_record.answer = answer
-        if chart:
-            db_record.chart_config_json = json.dumps(chart.model_dump(), default=str)
-        db.commit()
+    if db_query_id > 0:
+        from db.database import SessionLocal, QueryHistoryDB
+        fresh_db = SessionLocal()
+        try:
+            fresh_db_record = fresh_db.query(QueryHistoryDB).filter(QueryHistoryDB.id == db_query_id).first()
+            if fresh_db_record:
+                fresh_db_record.answer = answer
+                if chart:
+                    fresh_db_record.chart_config_json = json.dumps(chart.model_dump(), default=str)
+                fresh_db.commit()
+        except Exception as db_err:
+            print(f"Error updating query history: {db_err}")
+        finally:
+            fresh_db.close()
     
-    yield f'data: {json.dumps(final_resp)}\n\n'
+    yield f'data: {json.dumps(final_resp, default=json_serial)}\n\n'
 
 
 

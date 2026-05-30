@@ -7,11 +7,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./digital_twin.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgrespassword@localhost:5432/digital_twin")
 
 engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+    DATABASE_URL
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -50,7 +49,7 @@ class KpiDataDB(Base):
     __tablename__ = "kpi_data"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, index=True, nullable=False)
+    twin_id = Column(String, index=True, nullable=False)
     component_id = Column(String, nullable=False, index=True)
     kpi_name = Column(String, nullable=False)
     value = Column(Float)
@@ -68,6 +67,25 @@ class QueryHistoryDB(Base):
     answer = Column(Text)
     chart_config_json = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class UserConfigurationDB(Base):
+    __tablename__ = "user_configurations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    twin_id = Column(String, index=True, nullable=False, unique=True)
+    user_id = Column(Integer, index=True, nullable=True)
+    source_type = Column(String, default="postgres")
+    telemetry_db_url = Column(String)
+    telemetry_table = Column(String)
+    timestamp_col = Column(String)
+    component_id_col = Column(String)
+    credentials_json = Column(Text, default="{}")
+    domain = Column(String, default="factory")
+    assignments_json = Column(Text, default="{}")
+    streaming = Column(Integer, default=0) # boolean via integer
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class ShareLinkDB(Base):

@@ -1,0 +1,20 @@
+feat(analytics): refactor LangGraph NLQ agent and fix multi-tenant data pipelines
+
+This massive update stabilizes the NLQ Analytics Agent, fixes multiple deadlocks, and introduces stateless short-term memory for contextual conversations. It also hardens the multi-tenant architecture to support unlimited parallel twins and users.
+
+Backend & LangGraph Architecture:
+- feat: Implemented context-aware, stateless memory for the NLQ Agent. Frontend now passes the conversation history manually, eliminating the need for `MemorySaver` SQLite checkpointers.
+- fix(deadlock): Completely removed LangGraph checkpointers to prevent thread-locking deadlocks that resulted in `Analysis failed` or infinite 500/422 Server Errors during `astream()`.
+- fix(analytics): Modified `nlq_agent.py` to intercept the final assistant message dynamically during graph execution instead of trying to retrieve it from non-existent memory (`app.get_state()`).
+- fix(analytics): Removed the restrictive `component_ids` filter in `get_kpi_data()`. The NLQ agent can now access and analyze "global" KPIs that are not explicitly assigned to layout components.
+- fix(schemas): Aligned Pydantic schemas (`AnalyticsQueryRequest`) with frontend camelCase payloads, notably replacing `timeRange` mapping bugs.
+
+Data Source & Multi-Tenancy:
+- refactor: Overhauled DB operations to enforce strict isolation per `twin_id`.
+- fix(websockets): Repaired the KPI data stream pipeline to properly route and broadcast Server-Sent Events (SSE) individually per active twin session.
+- fix(connectors): Unified all Data Connectors (PostgreSQL, MQTT, Kafka, etc.) to use the base `BaseConnector` correctly and safely load configuration bounds per tenant.
+
+Frontend (React):
+- feat(chatbot): The AI Chatbot now natively keeps track of the last 3 conversational turns and bundles them into the API request for context-aware queries.
+- fix(chatbot): Solved `ReferenceError: activeTwinId is not defined` preventing query submissions.
+- fix(wizard): Adjusted the Layout/NLQ suggestions API payload inside the Wizard to use contextual domains immediately, bypassing database lag.

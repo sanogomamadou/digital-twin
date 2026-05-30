@@ -66,12 +66,15 @@ def save_layout_state(
 
 @router.get("/suggestions", response_model=list[str])
 async def get_layout_suggestions_endpoint(
+    domain: str = None,
+    twin_id: str = "default",
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):
     """Generate domain-specific layout prompt suggestions."""
-    layout = crud.get_layout(db, current_user.id, "default")
-    domain = layout.domain if layout else "factory"
+    if not domain:
+        layout = crud.get_layout(db, current_user.id, twin_id)
+        domain = layout.domain if layout else "factory"
     
     domain = domain.lower()
     if "airport" in domain:

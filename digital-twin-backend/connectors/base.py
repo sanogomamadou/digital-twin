@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 class KpiReading:
     """A single real-time KPI measurement."""
     user_id: int
+    twin_id: str
     component_id: str
     kpi_name: str
     value: float
@@ -54,6 +55,8 @@ class BaseConnector(ABC):
         self.config = config
         self._running = False
         self._task: asyncio.Task | None = None
+        self.twin_id = config.get("twin_id", "default")
+        self.user_id = config.get("user_id", 1)
 
     async def start(self):
         """Start the connector background task."""

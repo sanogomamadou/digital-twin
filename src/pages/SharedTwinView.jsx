@@ -28,7 +28,7 @@ export default function SharedTwinView({ shareId }) {
         loadTwinFromDb, kpis, components, connections,
         updateKpiValues, activePanel, setActivePanel,
         selectedComponentId, selectComponent,
-        twinName, selectedDomain
+        twinName, selectedDomain, activeTwinId
     } = useTwinStore();
 
     const [password, setPassword] = useState('');
@@ -98,7 +98,7 @@ export default function SharedTwinView({ shareId }) {
         return () => clearInterval(interval);
     }, [isAuthenticated, shareId]);
 
-    const { status: wsStatus, lastUpdate, messageCount, STATUS } = useKpiWebSocket(selectedDomain || 'factory');
+    const { status: wsStatus, lastUpdate, messageCount, STATUS } = useKpiWebSocket(activeTwinId || 'default');
 
     useEffect(() => {
         if (!isAuthenticated || wsStatus === STATUS.LIVE) return;

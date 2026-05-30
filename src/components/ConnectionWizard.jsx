@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { connectTelemetryDb, selectTelemetryTable, getTelemetrySchema, getTelemetryStatus } from '../services/api';
+import useTwinStore from '../store/useTwinStore';
 
 const SOURCE_TYPES = [
   { id: 'postgres', label: 'PostgreSQL' },
@@ -11,6 +12,7 @@ const SOURCE_TYPES = [
 ];
 
 export default function ConnectionWizard() {
+  const { activeTwinId } = useTwinStore();
   const [sourceType, setSourceType] = useState('postgres');
   const [dbUrl, setDbUrl] = useState('postgresql://postgres:postgrespassword@localhost:5433/telemetry_db');
   const [credentials, setCredentials] = useState({ db_name: '', access_token: '', topic: '', port: '1883', username: '', password: '' });
@@ -27,10 +29,10 @@ export default function ConnectionWizard() {
   const [sourceStatus, setSourceStatus] = useState(null);
 
   useEffect(() => {
-    getTelemetryStatus().then(s => {
+    getTelemetryStatus(activeTwinId || 'default').then(s => {
       setSourceStatus(s);
       if (s.connected) {
-        getTelemetrySchema().then(sch => {
+        getTelemetrySchema(activeTwinId || 'default').then(sch => {
           setSelectedTable(sch.table || '');
           setTimestampCol(sch.timestamp_col || 'timestamp');
           setComponentIdCol(sch.component_id_col || 'component_id');
@@ -45,7 +47,7 @@ export default function ConnectionWizard() {
     if (!dbUrl) return;
     setLoading(true); setError(''); setSuccess('');
     try {
-      const data = await connectTelemetryDb(sourceType, dbUrl, credentials);
+      const data = await connectTelemetryDb(activeTwinId || 'default', sourceType, dbUrl, credentials);
       setTables(data.tables || []);
       setSuccess('Connected to data source. Please select a table/collection/topic.');
       
@@ -65,8 +67,8 @@ export default function ConnectionWizard() {
     setSelectedTable(t);
     setLoading(true);
     try {
-      await selectTelemetryTable(t, timestampCol, componentIdCol);
-      const sch = await getTelemetrySchema();
+      await selectTelemetryTable(activeTwinId || 'default', t, timestampCol, componentIdCol);
+      const sch = await getTelemetrySchema(activeTwinId || 'default');
       setColumns(sch.columns || []);
     } catch (e) {
       setError('Failed to fetch schema for mapping: ' + e.message);
@@ -79,7 +81,7 @@ export default function ConnectionWizard() {
     if (!selectedTable) return;
     setLoading(true); setError(''); setSuccess('');
     try {
-      await selectTelemetryTable(selectedTable, timestampCol, componentIdCol);
+      await selectTelemetryTable(activeTwinId || 'default', selectedTable, timestampCol, componentIdCol);
       setSuccess(`Configuration saved! Telemetry will be streamed from: ${selectedTable}. You can now proceed to create a Twin and map these columns.`);
     } catch (e) {
       setError(e.message);

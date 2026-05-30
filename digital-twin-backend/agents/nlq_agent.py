@@ -62,7 +62,7 @@ async def run_nlq_agent_stream(
         {"timestamp": getattr(r, "timestamp"), "value": getattr(r, "value"), "kpi_name": getattr(r, "kpi_name"), "component_id": getattr(r, "component_id")}
         for r in records
     ]
-    filtered_dicts = filter_by_time_range(records_dicts, request.timeRange or "24h")
+    filtered_dicts = filter_by_time_range(records_dicts, request.time_range or "24h")
 
     # Mock fallback if no Groq
     if not has_real_llm():
@@ -84,25 +84,39 @@ async def run_nlq_agent_stream(
     try:
         app = create_analytics_orchestrator()
         
-        inputs = {
-            "messages": [
-                SystemMessage(content=NLQ_SYSTEM_PROMPT),
-                HumanMessage(content=f"Time range: {request.timeRange}. User Question: {request.question}")
-            ]
-        }
+
+        messages_list = [SystemMessage(content=NLQ_SYSTEM_PROMPT)]
+        if getattr(request, 'history', None):
+            from langchain_core.messages import AIMessage
+            for msg in request.history[-6:]: # Keep last 3 turns
+                if msg.role == "user":
+                    messages_list.append(HumanMessage(content=msg.content))
+                elif msg.role == "assistant":
+                    messages_list.append(AIMessage(content=msg.content))
         
-        config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 10}
+        messages_list.append(HumanMessage(content=f"Time range: {request.time_range}. User Question: {request.question}"))
+        
+        inputs = {
+            "messages": messages_list
+        }
+
+        
+        config = {"recursion_limit": 10}
+        yield f'data: ' + json.dumps({"type": "thought", "content": "Contacting Groq LLM..."}) + '\n\n'
+        await asyncio.sleep(0.05)
         
         llm_result = None
         
         # Use astream(stream_mode="updates") instead of ainvoke or astream_events
         # This is safe on Windows and still allows us to stream thoughts!
         try:
+            last_agent_message = None
             async for chunk in app.astream(inputs, config=config, stream_mode="updates"):
                 for node, values in chunk.items():
                     if node == "agent":
                         # The agent made a decision (either called a tool or finished)
                         last_message = values["messages"][-1]
+                        last_agent_message = last_message
                         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
                             for tc in last_message.tool_calls:
                                 yield f'data: {json.dumps({"type": "thought", "content": f"Using tool: {tc.get("name")}..."})}\n\n'
@@ -112,16 +126,17 @@ async def run_nlq_agent_stream(
                         yield f'data: {json.dumps({"type": "thought", "content": "Tool finished. Analyzing results..."})}\n\n'
                         await asyncio.sleep(0.05)
             
-            # Extract final result
-            final_state = app.get_state(config).values
-            
-            final_message = final_state["messages"][-1].content
+            if not last_agent_message:
+                raise ValueError("No response from agent")
+                
+            final_message = last_agent_message.content
             llm_result = extract_json_from_text(final_message)
             if not llm_result:
                 raise ValueError("Could not extract JSON from response.")
                 
         except Exception as e:
             print(f"Error in NLQ agent: {e}")
+            yield f'data: ' + json.dumps({"type": "thought", "content": f"Error: {str(e)}"}) + '\n\n'
             llm_result = {
                 "answer": f"Analysis failed (fallback): {str(e)}",
                 "chart_instruction": "Create a bar chart showing the error."

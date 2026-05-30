@@ -5,7 +5,7 @@ import useTwinStore from '../store/useTwinStore';
 import { Bot } from 'lucide-react';
 
 export default function Chatbot() {
-  const { kpis, components, selectedComponentId, selectedDomain } = useTwinStore();
+  const { kpis, components, selectedComponentId, selectedDomain, activeTwinId } = useTwinStore();
   const [messages, setMessages] = useState([
     { id: 0, role: 'assistant', text: '✨ Welcome to your **Analytics AI**!\n\nI\'m here to turn your KPI data into actionable insights. Ask me anything, and I\'ll generate beautiful charts on the fly.', chart: null },
   ]);
@@ -21,7 +21,7 @@ export default function Chatbot() {
   useEffect(() => {
     const check = () => checkBackendHealth().then(online => {
       setBackendOnline(online);
-      if (online) getQuerySuggestions(selectedDomain).then(s => setSuggestions(s.map(x => x.text))).catch(() => {});
+      if (online) getQuerySuggestions(activeTwinId || 'default', selectedDomain).then(s => setSuggestions(s.map(x => x.text))).catch(() => {});
     });
     check();
     const id = setInterval(check, 30_000);
@@ -56,7 +56,9 @@ export default function Chatbot() {
     try {
       if (backendOnline) {
         // Real NLQ via backend
-        const result = await nlqQuery(q, {
+        const chatHistory = messages.filter(m => m.id !== 0 && m.id !== userMsg.id).map(m => ({ role: m.role, content: m.text }));
+        const result = await nlqQuery(activeTwinId || 'default', q, {
+          history: chatHistory,
           componentId: selComp?.id,
           timeRange,
         }, (thought) => setCurrentThought(thought));
@@ -87,7 +89,7 @@ export default function Chatbot() {
       setIsTyping(false);
       setCurrentThought('');
       // Refresh suggestions
-      if (backendOnline) getQuerySuggestions(selectedDomain).then(s => setSuggestions(s.map(x => x.text))).catch(() => {});
+      if (backendOnline) getQuerySuggestions(activeTwinId || 'default', selectedDomain).then(s => setSuggestions(s.map(x => x.text))).catch(() => {});
     }
   };
 

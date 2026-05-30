@@ -84,7 +84,7 @@ class RestConnector(BaseConnector):
                 return
             value = float(raw)
             rules = ep.get("rules", {})
-            reading = KpiReading(
+            reading = KpiReading(twin_id=self.twin_id, 
                             user_id=self.user_id,
                             component_id=ep["component_id"],
                 kpi_name=ep["kpi_name"],

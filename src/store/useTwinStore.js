@@ -528,7 +528,7 @@ const useTwinStore = create((set, get) => ({
         if (export3D && !threeSceneRef) throw new Error("3D Scene not ready.");
 
         // 1. Gather Data Snapshot
-        const dataSnapshot = {
+        const dataSnapshot = { twin_id: activeTwinId || 'default', 
             timestamp: new Date().toISOString(),
             twinName,
             domain: selectedDomain,

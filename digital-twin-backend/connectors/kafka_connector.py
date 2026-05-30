@@ -63,7 +63,7 @@ class KafkaConnector(BaseConnector):
                     if col_name in payload and payload[col_name] is not None:
                         val = float(payload[col_name])
                         rules = mapping.get("rules", {})
-                        reading = KpiReading(
+                        reading = KpiReading(twin_id=self.twin_id, 
                             user_id=self.user_id,
                             component_id=comp_id,
                             kpi_name=mapping.get("kpi_name", col_name),

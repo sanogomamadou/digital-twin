@@ -2,7 +2,6 @@ from typing import TypedDict, Annotated, Sequence
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END, add_messages
 from langgraph.prebuilt import ToolNode
-from langgraph.checkpoint.memory import MemorySaver
 from agents.tools import get_kpi_list, get_kpi_statistics, detect_kpi_anomalies, get_recent_values, analyze_with_pandas, search_documentation
 from services.llm_service import get_llm
 
@@ -11,7 +10,6 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
 
 _cached_workflow = None
-_memory_saver = MemorySaver()
 
 def create_analytics_orchestrator():
     """Builds and returns the LangGraph orchestrator for Analysis (NLQ or Reports)."""
@@ -56,5 +54,5 @@ def create_analytics_orchestrator():
     workflow.add_conditional_edges("agent", should_continue, {"tools": "tools", END: END})
     workflow.add_edge("tools", "agent")
     
-    _cached_workflow = workflow.compile(checkpointer=_memory_saver)
+    _cached_workflow = workflow.compile()
     return _cached_workflow

@@ -76,7 +76,7 @@ class MqttConnector(BaseConnector):
                 unit  = str(payload.get("unit", ""))
                 rules = payload.get("rules", {})
 
-                reading = KpiReading(
+                reading = KpiReading(twin_id=self.twin_id, 
                             user_id=self.user_id,
                             component_id=component_id,
                     kpi_name=kpi_name.replace("_", " ").title(),

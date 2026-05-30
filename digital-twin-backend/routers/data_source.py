@@ -6,6 +6,8 @@ import os
 import psycopg2
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
+from db.database import get_db
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 from routers.auth import get_current_user
@@ -14,7 +16,6 @@ from db.database import UserDB
 router = APIRouter(prefix="/source", tags=["Data Source"])
 
 # ── Shared state ──────────────────────────────────────────────────────────────
-_source_states = {}
 _active_connectors = {}
 
 def get_default_source_state():
@@ -32,32 +33,41 @@ def get_default_source_state():
         "credentials": {}
     }
 
-SOURCE_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "source_data")
-ASSIGNMENTS_FILE = os.path.join(SOURCE_DATA_DIR, "db_assignments.json")
-os.makedirs(SOURCE_DATA_DIR, exist_ok=True)
+def get_user_state(db, twin_id: str) -> dict:
+    from db.crud import get_user_configuration
+    config = get_user_configuration(db, twin_id)
+    if not config:
+        return get_default_source_state()
+    import json
+    return {
+        "domain": config.domain,
+        "columns": [],
+        "assignments": json.loads(config.assignments_json) if config.assignments_json else {},
+        "connected_at": config.updated_at.isoformat() if config.updated_at else None,
+        "streaming": bool(config.streaming),
+        "source_type": config.source_type,
+        "telemetry_db_url": config.telemetry_db_url,
+        "telemetry_table": config.telemetry_table,
+        "timestamp_col": config.timestamp_col,
+        "component_id_col": config.component_id_col,
+        "credentials": json.loads(config.credentials_json) if config.credentials_json else {},
+    }
 
-def _load_saved_assignments():
-    if os.path.exists(ASSIGNMENTS_FILE):
-        with open(ASSIGNMENTS_FILE) as f:
-            saved = json.load(f)
-            # handle backward compatibility if old format
-            if "domain" in saved:
-                _source_states["1"] = saved
-            else:
-                for k, v in saved.items():
-                    _source_states[k] = v
-
-_load_saved_assignments()
-
-def _get_user_state(user_id: int):
-    uid = str(user_id)
-    if uid not in _source_states:
-        _source_states[uid] = get_default_source_state()
-    return _source_states[uid]
-
-def _save_states():
-    with open(ASSIGNMENTS_FILE, "w") as f:
-        json.dump(_source_states, f, indent=2)
+def save_user_state(db, twin_id: str, user_id: int, state: dict):
+    from db.crud import update_user_configuration
+    import json
+    config_data = {
+        "domain": state.get("domain", "factory"),
+        "assignments_json": json.dumps(state.get("assignments", {})),
+        "streaming": 1 if state.get("streaming") else 0,
+        "source_type": state.get("source_type", "postgres"),
+        "telemetry_db_url": state.get("telemetry_db_url"),
+        "telemetry_table": state.get("telemetry_table"),
+        "timestamp_col": state.get("timestamp_col"),
+        "component_id_col": state.get("component_id_col"),
+        "credentials_json": json.dumps(state.get("credentials", {})),
+    }
+    update_user_configuration(db, twin_id, user_id, config_data)
 
 class ColAssignment(BaseModel):
     kpi_id: str
@@ -132,9 +142,9 @@ class ConnectPayload(BaseModel):
     credentials: Dict[str, Any] = {}
 
 @router.post("/connect")
-def connect_telemetry_db(payload: ConnectPayload, current_user: UserDB = Depends(get_current_user)):
+def connect_telemetry_db(payload: ConnectPayload, twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = _get_user_state(user_id)
+    user_state = get_user_state(db, twin_id)
 
     tables = []
     try:
@@ -176,6 +186,7 @@ def connect_telemetry_db(payload: ConnectPayload, current_user: UserDB = Depends
         user_state["source_type"] = stype
         user_state["telemetry_db_url"] = payload.db_url
         user_state["credentials"] = payload.credentials
+        save_user_state(db, twin_id, current_user.id, user_state)
         return {"connected": True, "tables": tables}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Connection failed: {e}")
@@ -186,9 +197,9 @@ class TablePayload(BaseModel):
     component_id_col: str = "component_id"
 
 @router.post("/table")
-def select_table(payload: TablePayload, current_user: UserDB = Depends(get_current_user)):
+def select_table(payload: TablePayload, twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = _get_user_state(user_id)
+    user_state = get_user_state(db, twin_id)
 
     user_state["telemetry_table"] = payload.table_name
     user_state["timestamp_col"] = payload.timestamp_col
@@ -202,12 +213,13 @@ def select_table(payload: TablePayload, current_user: UserDB = Depends(get_curre
         exclude_cols=[payload.timestamp_col, payload.component_id_col]
     )
     
+    save_user_state(db, twin_id, current_user.id, user_state)
     return {"table": payload.table_name, "timestamp_col": payload.timestamp_col, "component_id_col": payload.component_id_col}
 
 @router.get("/schema")
-def get_schema(current_user: UserDB = Depends(get_current_user)):
+def get_schema(twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = _get_user_state(user_id)
+    user_state = get_user_state(db, twin_id)
 
     table = user_state.get("telemetry_table")
     db_url = user_state.get("telemetry_db_url")
@@ -222,8 +234,8 @@ def get_schema(current_user: UserDB = Depends(get_current_user)):
         "streaming": user_state.get("streaming", False),
     }
 
-def get_connector_instance(user_id: int):
-    user_state = _get_user_state(user_id)
+def get_connector_instance(db, twin_id: str, user_id: int):
+    user_state = get_user_state(db, twin_id)
 
     stype = user_state.get("source_type", "postgres")
     config = {
@@ -232,6 +244,7 @@ def get_connector_instance(user_id: int):
         "timestamp_col": user_state.get("timestamp_col"),
         "component_id_col": user_state.get("component_id_col"),
         "user_id": user_id,
+        "twin_id": twin_id,
     }
     config.update(user_state.get("credentials", {}))
 
@@ -251,18 +264,24 @@ def get_connector_instance(user_id: int):
 
 # We must manage the active connector globally to stop the old one when assignments change
 
-def get_all_user_states():
-    return _source_states
+def get_all_user_states(db):
+    from db.crud import get_all_user_configurations
+    configs = get_all_user_configurations(db)
+    states = {}
+    for config in configs:
+        states[config.twin_id] = get_user_state(db, config.twin_id)
+        states[config.twin_id]["user_id"] = config.user_id
+    return states
 
-def register_active_connector(user_id: int, connector):
+def register_active_connector(twin_id: str, connector):
     """Called by main.py at startup to register the boot connector."""
     global _active_connectors
-    _active_connectors[user_id] = connector
+    _active_connectors[twin_id] = connector
 
 @router.post("/assign")
-async def assign_columns(payload: AssignmentsPayload, current_user: UserDB = Depends(get_current_user)):
+async def assign_columns(payload: AssignmentsPayload, twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = _get_user_state(user_id)
+    user_state = get_user_state(db, twin_id)
 
     global _active_connectors
     # REPLACE all assignments — the frontend sends the complete set for the current twin.
@@ -293,13 +312,12 @@ async def assign_columns(payload: AssignmentsPayload, current_user: UserDB = Dep
     except Exception as e:
         print(f"Failed to flush KPI bus: {e}")
 
-    _save_states()
+    save_user_state(db, twin_id, current_user.id, user_state)
 
     try:
         # Prefer updating the existing connector's assignments in-place
         # so we don't create a duplicate that fights the old one.
-        from connectors.postgres_connector import get_postgres_connector
-        existing_pc = get_postgres_connector()
+        existing_pc = _active_connectors.get(twin_id)
         
         if existing_pc and existing_pc._running:
             # Hot-update: just change the assignments on the running connector
@@ -313,19 +331,19 @@ async def assign_columns(payload: AssignmentsPayload, current_user: UserDB = Dep
             )
             # Clear stale last_timestamps so new component IDs get fresh queries
             existing_pc.last_timestamps.clear()
-            _active_connectors[user_id] = existing_pc
+            _active_connectors[twin_id] = existing_pc
             print(f"[assign] Hot-updated running connector for domain={payload.domain}, {len(new_assignments)} KPIs")
         else:
             # No running connector — stop old one if any and start fresh
-            if _active_connectors.get(user_id):
+            if _active_connectors.get(twin_id):
                 import asyncio
-                asyncio.create_task(_active_connectors.get(user_id).stop())
+                asyncio.create_task(_active_connectors.get(twin_id).stop())
             
-            pc = get_connector_instance(current_user.id)
+            pc = get_connector_instance(db, twin_id, current_user.id)
             if pc:
                 pc.update_assignments(new_assignments, payload.domain)
                 pc.last_timestamps.clear()
-                _active_connectors[user_id] = pc
+                _active_connectors[twin_id] = pc
                 import asyncio
                 asyncio.create_task(pc.start())
                 print(f"[assign] Started new connector for domain={payload.domain}, {len(new_assignments)} KPIs")
@@ -334,8 +352,10 @@ async def assign_columns(payload: AssignmentsPayload, current_user: UserDB = Dep
 
     return {"saved": len(new_assignments), "assignments": new_assignments}
 
-def apply_assignments_sync(user_id: int, domain: str, assignments_list: list):
-    user_state = _get_user_state(user_id)
+def apply_assignments_sync(twin_id: str, user_id: int, domain: str, assignments_list: list):
+    from db.database import SessionLocal
+    with SessionLocal() as db:
+        user_state = get_user_state(db, twin_id)
 
     """Re-apply KPI assignments when loading a twin.
     
@@ -400,11 +420,10 @@ def apply_assignments_sync(user_id: int, domain: str, assignments_list: list):
     except Exception:
         pass
 
-    _save_states()
+    save_user_state(db, twin_id, user_id, user_state)
 
     try:
-        from connectors.postgres_connector import get_postgres_connector
-        existing_pc = get_postgres_connector()
+        existing_pc = _active_connectors.get(twin_id)
         
         if existing_pc and existing_pc._running:
             # Hot-update the running connector
@@ -415,18 +434,18 @@ def apply_assignments_sync(user_id: int, domain: str, assignments_list: list):
                 table_name=saved_table,
             )
             existing_pc.last_timestamps.clear()
-            _active_connectors[user_id] = existing_pc
+            _active_connectors[twin_id] = existing_pc
         else:
             # Stop old one and start fresh
-            if _active_connectors.get(user_id):
+            if _active_connectors.get(twin_id):
                 import asyncio
                 try:
                     loop = asyncio.get_running_loop()
-                    loop.create_task(_active_connectors.get(user_id).stop())
+                    loop.create_task(_active_connectors.get(twin_id).stop())
                 except RuntimeError:
                     pass
 
-            pc = get_connector_instance(user_id)
+            pc = get_connector_instance(db, twin_id, user_id)
             if pc:
                 pc.update_assignments(
                     new_assignments,
@@ -435,7 +454,7 @@ def apply_assignments_sync(user_id: int, domain: str, assignments_list: list):
                     table_name=saved_table,
                 )
                 pc.last_timestamps.clear()
-                _active_connectors[user_id] = pc
+                _active_connectors[twin_id] = pc
                 import asyncio
                 try:
                     loop = asyncio.get_running_loop()
@@ -452,18 +471,18 @@ class ProposeKpisRequest(BaseModel):
     components: Optional[List[Dict[str, str]]] = []
 
 @router.post("/propose_kpis")
-async def propose_kpis_endpoint(payload: ProposeKpisRequest, current_user: UserDB = Depends(get_current_user)):
+async def propose_kpis_endpoint(payload: ProposeKpisRequest, twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = _get_user_state(user_id)
+    user_state = get_user_state(db, twin_id)
 
     from agents.kpi_agent import propose_kpis
     kpis = await propose_kpis(payload.domain, payload.columns, payload.components)
     return {"kpis": kpis}
 
 @router.get("/status")
-def get_status(current_user: UserDB = Depends(get_current_user)):
+def get_status(twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = _get_user_state(user_id)
+    user_state = get_user_state(db, twin_id)
 
     global _active_connectors
     if len(user_state["columns"]) == 0 and user_state.get("telemetry_table"):
@@ -483,23 +502,23 @@ def get_status(current_user: UserDB = Depends(get_current_user)):
         "domain": user_state.get("domain"),
         "assignedColumns": assigned_count,
         "connectedAt": user_state.get("connected_at"),
-        "connectorRunning": _active_connectors.get(user_id)._running if _active_connectors.get(user_id) else False,
+        "connectorRunning": _active_connectors.get(twin_id)._running if _active_connectors.get(twin_id) else False,
     }
 
 @router.delete("")
-def disconnect_source(current_user: UserDB = Depends(get_current_user)):
+def disconnect_source(twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = _get_user_state(user_id)
+    user_state = get_user_state(db, twin_id)
 
     global _active_connectors
-    if _active_connectors.get(user_id):
+    if _active_connectors.get(twin_id):
         import asyncio
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(_active_connectors.get(user_id).stop())
+            loop.create_task(_active_connectors.get(twin_id).stop())
         except:
             pass
-        if user_id in _active_connectors: del _active_connectors[user_id]
+        if user_id in _active_connectors: del _active_connectors[twin_id]
 
     user_state.update({
         "columns": [], "streaming": False, "assignments": {},
@@ -507,6 +526,7 @@ def disconnect_source(current_user: UserDB = Depends(get_current_user)):
         "timestamp_col": "timestamp", "component_id_col": "component_id",
         "source_type": "postgres", "credentials": {}
     })
+    save_user_state(db, twin_id, current_user.id, user_state)
     return {"status": "disconnected"}
 
 def get_source_state():

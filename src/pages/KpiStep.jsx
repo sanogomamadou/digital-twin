@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { ChevronRight, ArrowLeft, Database, Plus, Trash2, Zap, Palette, Focus } from 'lucide-react';
 import useTwinStore from '../store/useTwinStore';
-import { proposeKpis } from '../services/api';
+import { proposeKpis, getTelemetrySchema, saveTelemetryAssignments } from '../services/api';
 
 const BASE_URL = '';
 
 export default function KpiStep() {
-    const { setStep, components, selectedDomain } = useTwinStore();
+    const { setStep, components, selectedDomain, activeTwinId } = useTwinStore();
 
     const [columns, setColumns] = useState([]);
     const [assignments, setAssignments] = useState([]); 
@@ -16,12 +16,7 @@ export default function KpiStep() {
 
     useEffect(() => {
         // Fetch DB schema for current domain
-        fetch(`${BASE_URL}/source/schema?domain=${selectedDomain}`)
-            .then(async r => {
-                if (!r.ok) throw new Error(`Status ${r.status}`);
-                const txt = await r.text();
-                return txt ? JSON.parse(txt) : {};
-            })
+        getTelemetrySchema(activeTwinId || 'default')
             .then(data => {
                 setColumns(data.columns || []);
                 // Prioritize assignments saved in Zustand for this specific Twin
@@ -71,7 +66,7 @@ export default function KpiStep() {
         setError('');
         try {
             const compList = components.map(c => ({ id: c.id, name: c.name }));
-            const data = await proposeKpis(selectedDomain, columns, compList);
+            const data = await proposeKpis(activeTwinId || 'default', selectedDomain, columns, compList);
             if (data && data.kpis) {
                 const newAssignments = data.kpis.map(k => {
                     const matchedComponent = components.find(c => c.id === k.target_machine_id) || components[0];
@@ -123,21 +118,7 @@ export default function KpiStep() {
 
         setLoading(true); setError('');
         try {
-            const res = await fetch(`${BASE_URL}/source/assign`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ domain: selectedDomain, assignments: valid }),
-            });
-            if (!res.ok) { 
-                const txt = await res.text();
-                let errMsg = 'Save failed';
-                try { 
-                    errMsg = JSON.parse(txt).detail || errMsg; 
-                } catch(err) {
-                    errMsg = txt || `HTTP Error ${res.status}`;
-                }
-                throw new Error(errMsg); 
-            }
+            await saveTelemetryAssignments(activeTwinId || 'default', selectedDomain, valid);
             
             // Clear local KPI cache in Zustand so Live View isn't stale
             useTwinStore.getState().clearKpis();

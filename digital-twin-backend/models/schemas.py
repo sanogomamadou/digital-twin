@@ -192,10 +192,16 @@ class ReportRequest(BaseModel):
     components: list[dict] = []
     connections: list[dict] = []
 
+class MessageHistory(BaseModel):
+    role: str
+    content: str
+
 class AnalyticsQueryRequest(BaseModel):
+    twin_id: str
     question: str
-    componentId: Optional[str] = None  # filter to specific component
-    timeRange: Optional[str] = "24h"   # 1h | 6h | 24h | 7d | 30d
+    component_id: Optional[str] = None
+    time_range: Optional[str] = "24h"
+    history: Optional[list[MessageHistory]] = []
 
 class AnalyticsQueryResponse(BaseModel):
     answer: str

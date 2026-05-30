@@ -89,7 +89,7 @@ export default function TwinView() {
     };
 
     // Real-time KPI stream from backend file connector via WebSocket
-    const { status: wsStatus, lastUpdate, messageCount, STATUS } = useKpiWebSocket(selectedDomain || 'airport');
+    const { status: wsStatus, lastUpdate, messageCount, STATUS } = useKpiWebSocket(activeTwinId || 'default');
 
     // Fallback local timer only when WebSocket is not live
     useEffect(() => {

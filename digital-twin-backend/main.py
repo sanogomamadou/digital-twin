@@ -65,16 +65,16 @@ async def _start_connectors():
     from connectors.mqtt_connector import MqttConnector, MQTT_ENABLED
     from connectors.rest_connector import RestConnector, REST_ENABLED
     from routers.data_source import get_all_user_states, register_active_connector
+    from db.database import SessionLocal
 
-    states = get_all_user_states()
+    with SessionLocal() as db:
+        states = get_all_user_states(db)
     if not states:
         return
 
-    for user_id_str, state in states.items():
-        try:
-            user_id = int(user_id_str)
-        except ValueError:
-            continue
+    for twin_id, state in states.items():
+        user_id = state.get("user_id")
+        if not user_id: continue
             
         saved_assignments = state.get("assignments", {})
         domain = state.get("domain", "factory")
@@ -86,6 +86,7 @@ async def _start_connectors():
 
         pc = PostgresConnector({
             "user_id": user_id,
+            "twin_id": twin_id,
             "assignments": saved_assignments,
             "domain": domain,
             "db_url": telemetry_db_url,
@@ -93,7 +94,7 @@ async def _start_connectors():
             "poll_interval": 2.0,
         })
         _connectors.append(pc)
-        register_active_connector(user_id, pc)
+        register_active_connector(twin_id, pc)
         await pc.start()
         logger.info(f"🐘 Postgres connector started for user {user_id} — domain='{domain}', table='{telemetry_table}', assignments={len(saved_assignments)}")
 

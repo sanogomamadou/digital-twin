@@ -280,7 +280,7 @@ class SimulatorConnector(BaseConnector):
             try:
                 value = self._next_value(kpi_def)
                 status = self.compute_status(value, kpi_def.get("rules", {}))
-                reading = KpiReading(
+                reading = KpiReading(twin_id=self.twin_id, 
                     user_id=self.user_id,
                     component_id=kpi_def["component_id"],
                     kpi_name=kpi_def["kpi_name"],

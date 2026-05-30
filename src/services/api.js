@@ -100,41 +100,41 @@ export async function saveLayoutState(state) {
 
 // ─── Data Source API ─────────────────────────────────────────────────────────
 
-export async function connectTelemetryDb(sourceType, dbUrl, credentials = {}) {
-    return apiFetch('/source/connect', {
+export async function connectTelemetryDb(twinId, sourceType, dbUrl, credentials = {}) {
+    return apiFetch(`/source/connect?twin_id=${twinId}`, {
         method: 'POST',
         body: JSON.stringify({ source_type: sourceType, db_url: dbUrl, credentials }),
     });
 }
 
-export async function selectTelemetryTable(tableName) {
-    return apiFetch('/source/table', {
+export async function selectTelemetryTable(twinId, tableName) {
+    return apiFetch(`/source/table?twin_id=${twinId}`, {
         method: 'POST',
         body: JSON.stringify({ table_name: tableName }),
     });
 }
 
-export async function getTelemetrySchema() {
-    return apiFetch('/source/schema');
+export async function getTelemetrySchema(twinId) {
+    return apiFetch(`/source/schema?twin_id=${twinId}`);
 }
 
-export async function saveTelemetryAssignments(domain, assignments) {
-    return apiFetch('/source/assign', {
+export async function saveTelemetryAssignments(twinId, domain, assignments) {
+    return apiFetch(`/source/assign?twin_id=${twinId}`, {
         method: 'POST',
         body: JSON.stringify({ domain, assignments }),
     });
 }
 
-export async function disconnectTelemetry() {
-    return apiFetch('/source', { method: 'DELETE' });
+export async function disconnectTelemetry(twinId) {
+    return apiFetch(`/source?twin_id=${twinId}`, { method: 'DELETE' });
 }
 
-export async function getTelemetryStatus() {
-    return apiFetch('/source/status');
+export async function getTelemetryStatus(twinId) {
+    return apiFetch(`/source/status?twin_id=${twinId}`);
 }
 
-export async function proposeKpis(domain, columns, components = []) {
-    return apiFetch('/source/propose_kpis', {
+export async function proposeKpis(twinId, domain, columns, components = []) {
+    return apiFetch(`/source/propose_kpis?twin_id=${twinId}`, {
         method: 'POST',
         body: JSON.stringify({ domain, columns, components }),
     });
@@ -158,14 +158,14 @@ export async function pushRealtimeKpi(componentId, kpiName, value, unit = '') {
 
 // ─── Analytics API ────────────────────────────────────────────────────────────
 
-export async function nlqQuery(question, { componentId, timeRange = '24h' } = {}, onThought = null) {
+export async function nlqQuery(twinId, question, { componentId, timeRange = '24h', history = [] } = {}, onThought = null) {
     const headers = { 'Content-Type': 'application/json' };
 
     const res = await fetch(`${BASE_URL}/analytics/query`, {
         method: 'POST',
         headers,
         credentials: 'include',
-        body: JSON.stringify({ question, componentId, timeRange }),
+        body: JSON.stringify({ twin_id: twinId, question, component_id: componentId, time_range: timeRange, history }),
     });
 
     if (!res.ok) {
@@ -212,13 +212,13 @@ export async function chartFromPrompt(prompt, data) {
     });
 }
 
-export async function getQueryHistory(limit = 20) {
-    return apiFetch(`/analytics/history?limit=${limit}`);
+export async function getQueryHistory(twinId, limit = 20) {
+    return apiFetch(`/analytics/history?twin_id=${twinId}&limit=${limit}`);
 }
 
-export async function getQuerySuggestions(domain) {
+export async function getQuerySuggestions(twinId, domain) {
     const query = domain ? `?domain=${encodeURIComponent(domain)}` : '';
-    return apiFetch(`/analytics/suggestions${query}`);
+    return apiFetch(`/analytics/suggestions${query ? query + '&' : '?'}twin_id=${twinId}`);
 }
 
 // ─── Twins CRUD API ───────────────────────────────────────────────────────────

@@ -39,7 +39,7 @@ def list_twins(
 
 
 @router.get("/{twin_id}", response_model=LayoutStateSchema)
-def get_twin(
+async def get_twin(
     twin_id: str, 
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
@@ -54,7 +54,7 @@ def get_twin(
     try:
         from routers.data_source import apply_assignments_sync
         if schema.kpiAssignments:
-            apply_assignments_sync(schema.domain, schema.kpiAssignments)
+            apply_assignments_sync(twin_id, current_user.id, schema.domain, schema.kpiAssignments)
     except Exception as e:
         print(f"Failed to sync KPIs on twin load: {e}")
 

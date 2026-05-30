@@ -133,7 +133,7 @@ class PostgresConnector(BaseConnector):
                             if ts.tzinfo is None:
                                 ts = ts.replace(tzinfo=timezone.utc)
                                 
-                            reading = KpiReading(
+                            reading = KpiReading(twin_id=self.twin_id, 
                                 user_id=self.user_id,
                                 component_id=comp_id,
                                 kpi_name=kpi_config.get("kpi_name", "KPI"),

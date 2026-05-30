@@ -7,7 +7,6 @@ venv/
 env/
 .env
 *.db
-*.sqlite
 .git
 .gitignore
 README.md

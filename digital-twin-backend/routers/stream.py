@@ -30,24 +30,24 @@ router = APIRouter(tags=["Stream"])
 
 class ConnectionManager:
     def __init__(self):
-        self._clients: dict[int, set[WebSocket]] = {}
-        self._latest: dict[int, dict[str, dict]] = {}
+        self._clients: dict[str, set[WebSocket]] = {}
+        self._latest: dict[str, dict[str, dict]] = {}
 
-    def clear_latest(self, user_id: int = None):
-        if user_id:
-            self._latest[user_id] = {}
+    def clear_latest(self, twin_id: str = None):
+        if twin_id:
+            self._latest[twin_id] = {}
         else:
             self._latest = {}
         logger.info("WS snapshot cache cleared")
 
-    async def connect(self, ws: WebSocket, user_id: int):
+    async def connect(self, ws: WebSocket, twin_id: str):
         await ws.accept()
-        if user_id not in self._clients:
-            self._clients[user_id] = set()
-        self._clients[user_id].add(ws)
-        logger.info(f"WS client connected for user {user_id}")
+        if twin_id not in self._clients:
+            self._clients[twin_id] = set()
+        self._clients[twin_id].add(ws)
+        logger.info(f"WS client connected for twin {twin_id}")
         
-        latest = self._latest.get(user_id, {})
+        latest = self._latest.get(twin_id, {})
         if latest:
             try:
                 await ws.send_text(json.dumps({
@@ -58,32 +58,32 @@ class ConnectionManager:
             except Exception as e:
                 logger.error(f"Error sending snapshot: {e}")
 
-    def disconnect(self, ws: WebSocket, user_id: int):
-        if user_id in self._clients:
-            self._clients[user_id].discard(ws)
+    def disconnect(self, ws: WebSocket, twin_id: str):
+        if twin_id in self._clients:
+            self._clients[twin_id].discard(ws)
 
     def update_latest(self, reading: KpiReading):
-        if reading.user_id not in self._latest:
-            self._latest[reading.user_id] = {}
+        if reading.twin_id not in self._latest:
+            self._latest[reading.twin_id] = {}
         key = f"{reading.component_id}:{reading.kpi_name}"
-        self._latest[reading.user_id][key] = reading.to_dict()
+        self._latest[reading.twin_id][key] = reading.to_dict()
 
-    async def broadcast(self, message: dict, user_id: int):
-        if user_id not in self._clients:
+    async def broadcast(self, message: dict, twin_id: str):
+        if twin_id not in self._clients:
             return
         dead = set()
         payload = json.dumps(message)
-        for ws in self._clients[user_id]:
+        for ws in self._clients[twin_id]:
             try:
                 await ws.send_text(payload)
             except Exception:
                 dead.add(ws)
         for ws in dead:
-            self.disconnect(ws, user_id)
+            self.disconnect(ws, twin_id)
             
     async def broadcast_all(self, message: dict):
         payload = json.dumps(message)
-        for user_id, clients in self._clients.items():
+        for twin_id, clients in self._clients.items():
             dead = set()
             for ws in clients:
                 try:
@@ -91,11 +91,11 @@ class ConnectionManager:
                 except Exception:
                     dead.add(ws)
             for ws in dead:
-                self.disconnect(ws, user_id)
+                self.disconnect(ws, twin_id)
 
-    def client_count(self, user_id: int = None) -> int:
-        if user_id:
-            return len(self._clients.get(user_id, set()))
+    def client_count(self, twin_id: str = None) -> int:
+        if twin_id:
+            return len(self._clients.get(twin_id, set()))
         return sum(len(c) for c in self._clients.values())
 
 
@@ -110,11 +110,11 @@ async def kpi_broadcaster():
             reading: KpiReading = await asyncio.wait_for(KPI_BUS.get(), timeout=15.0)
             manager.update_latest(reading)
 
-            if manager.client_count(reading.user_id) > 0:
+            if manager.client_count(reading.twin_id) > 0:
                 await manager.broadcast({
                     "type": "kpi",
                     **reading.to_dict(),
-                }, reading.user_id)
+                }, reading.twin_id)
 
             asyncio.create_task(_persist_reading(reading))
 
@@ -129,13 +129,13 @@ async def kpi_broadcaster():
             logger.error(f"Broadcaster error: {e}")
 
 async def _persist_reading(reading: KpiReading):
-    """Persist a KPI reading to SQLite in background."""
+    """Persist a KPI reading to PostgreSQL in background."""
     try:
         from db.database import SessionLocal
         from db.crud import insert_kpi_records
         db = SessionLocal()
         try:
-            insert_kpi_records(db, reading.component_id, reading.kpi_name, [{
+            insert_kpi_records(db, reading.twin_id, reading.component_id, reading.kpi_name, [{
                 "value": reading.value,
                 "unit": reading.unit,
                 "timestamp": reading.timestamp,
@@ -152,7 +152,7 @@ async def _persist_reading(reading: KpiReading):
 @router.websocket("/ws/kpis")
 async def kpi_stream(
     websocket: WebSocket,
-    domain: str = Query("airport"),
+    twin_id: str = Query("default"),
 ):
     token = websocket.cookies.get("access_token")
     share_token = websocket.cookies.get("share_token")
@@ -175,28 +175,21 @@ async def kpi_stream(
     if not user_id:
         await websocket.close(code=1008)
         return
-        
-    try:
-        user_id = int(user_id)
-    except:
-        await websocket.close(code=1008)
-        return
 
-    await manager.connect(websocket, user_id)
+    await manager.connect(websocket, twin_id)
     try:
         while True:
-            # Keep connection alive; handle client pings
             try:
                 data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
                 msg = json.loads(data)
                 if msg.get("type") == "ping":
                     await websocket.send_text(json.dumps({"type": "pong"}))
             except asyncio.TimeoutError:
-                pass  # normal — connection still alive
+                pass
     except WebSocketDisconnect:
         pass
     finally:
-        manager.disconnect(websocket, user_id)
+        manager.disconnect(websocket, twin_id)
 
 
 # ── REST endpoints for WS status ─────────────────────────────────────────────

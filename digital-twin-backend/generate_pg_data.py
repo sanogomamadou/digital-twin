@@ -148,27 +148,23 @@ def simulate_stream():
     try:
         while True:
             tasks_to_generate = []
-            if os.path.exists(ASSIGNMENTS_FILE):
-                try:
-                    with open(ASSIGNMENTS_FILE, "r") as f:
-                        saved_users = json.load(f)
-                        # Handle old format (single tenant) vs new format (multi-tenant)
-                        if "domain" in saved_users:
-                            saved_users = {"default": saved_users}
-                            
-                        for uid, saved in saved_users.items():
-                            domain = saved.get("domain", "factory")
-                            assignments = saved.get("assignments", {})
-                            components = list(set(
-                                a.get("component_id")
-                                for a in assignments.values()
-                                if a.get("component_id")
-                            ))
-                            if not components:
-                                components = COMPONENT_IDS.get(f"{domain}_data", ["generic_1"])
-                            tasks_to_generate.append((f"{domain}_data", components))
-                except Exception as eval_e:
-                    print(f"Error reading assignments: {eval_e}")
+            try:
+                from db.database import SessionLocal, UserConfigurationDB
+                with SessionLocal() as db:
+                    configs = db.query(UserConfigurationDB).all()
+                    for config in configs:
+                        domain = config.domain or "factory"
+                        assignments = json.loads(config.assignments_json) if config.assignments_json else {}
+                        components = list(set(
+                            a.get("component_id")
+                            for a in assignments.values()
+                            if a.get("component_id")
+                        ))
+                        if not components:
+                            components = COMPONENT_IDS.get(f"{domain}_data", ["generic_1"])
+                        tasks_to_generate.append((f"{domain}_data", components))
+            except Exception as e:
+                print(f"Error reading DB configurations: {e}")
 
             if not tasks_to_generate:
                 tasks_to_generate.append(("factory_data", COMPONENT_IDS.get("factory_data", ["generic_1"])))

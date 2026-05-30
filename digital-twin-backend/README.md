@@ -127,7 +127,7 @@ unit=°C
 
 ## 🗄️ Database
 
-SQLite at `digital_twin.db` (auto-created on first run).
+PostgreSQL database.
 
 Tables:
 - `layout_states` — saved 2D/3D layouts
@@ -163,7 +163,6 @@ digital-twin-backend/
 ├── requirements.txt
 ├── .env                     ← your config (gitignored)
 ├── .env.example
-├── digital_twin.db          ← auto-created SQLite DB
 ├── agents/
 │   ├── layout_agent.py      ← NL → layout actions (LangGraph)
 │   ├── nlq_agent.py         ← NLQ → answer + chart (LangGraph)

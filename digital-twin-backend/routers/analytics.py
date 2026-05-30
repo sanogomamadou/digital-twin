@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from agents.nlq_agent import run_nlq_agent_stream
 from agents.chart_agent import run_chart_agent
 from agents.report_agent import run_report_agent
-from routers.auth import get_current_user
+from routers.auth import get_current_user, get_user_id_for_read
 from db.database import UserDB
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
@@ -28,10 +28,13 @@ async def nlq_query(
     Returns an answer + a chart configuration ready for Recharts as a SSE stream.
     """
     try:
+        user_id = current_user.id
+        layout = crud.get_layout(db, user_id, request.twin_id)
         records = crud.get_kpi_data(
             db,
-            user_id=current_user.id,
-            component_id=request.componentId,
+            twin_id=request.twin_id,
+            component_id=request.component_id,
+            
             limit=2000,
         )
         
@@ -50,12 +53,11 @@ async def nlq_query(
         ]
 
         # Save query to history (answer filled after agent)
-        db_record = crud.save_query(db, current_user.id, question=request.question, answer="", chart_config=None)
+        db_record = crud.save_query(db, user_id, question=request.question, answer="", chart_config=None)
 
-        # Get active layout to structure a persistent thread ID for the user's twin session
-        layout = crud.get_layout(db, current_user.id, "default")
-        active_twin_id = layout.id if layout else f"default_{current_user.id}"
-        thread_id = f"user_{current_user.id}_{active_twin_id}"
+        # active_twin_id for thread tracking
+        active_twin_id = layout.id if layout else f"default_{user_id}"
+        thread_id = f"user_{user_id}_{active_twin_id}"
 
         return StreamingResponse(
             run_nlq_agent_stream(
@@ -96,7 +98,9 @@ async def generate_report(
     Generate an AI PDF report text based on the current twin data and historical DB data.
     """
     try:
-        records = crud.get_kpi_data(db, user_id=current_user.id, limit=5000)
+        user_id = current_user.id
+        layout = crud.get_layout(db, user_id, request.twin_id)
+        records = crud.get_kpi_data(db, twin_id=request.twin_id,  limit=5000)
         report_text = await run_report_agent(request.model_dump(), records)
         return {"report": report_text}
     except Exception as e:
@@ -105,12 +109,14 @@ async def generate_report(
 
 @router.get("/history")
 def get_history(
+    twin_id: str,
     limit: int = 20, 
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):
     """Get the last N NLQ query history records."""
-    records = crud.get_query_history(db, current_user.id, limit)
+    user_id = current_user.id
+    records = crud.get_query_history(db, user_id, limit)
     return [
         {
             "id": r.id,
@@ -125,12 +131,17 @@ def get_history(
 
 @router.get("/suggestions", response_model=list[QuerySuggestion])
 async def get_suggestions(
+    domain: str = None,
+    twin_id: str = "default",
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):
     """Return generic predefined NLQ suggestions based on the twin's domain."""
-    layout = crud.get_layout(db, current_user.id, "default")
-    domain = layout.domain.lower() if layout and layout.domain else "factory"
+    if not domain:
+        layout = crud.get_layout(db, current_user.id, twin_id)
+        domain = layout.domain if layout and layout.domain else "factory"
+        
+    domain = domain.lower()
     
     if "airport" in domain:
         return [

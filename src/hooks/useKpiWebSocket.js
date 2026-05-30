@@ -11,10 +11,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import useTwinStore from '../store/useTwinStore';
 
-const WS_URL = (domain = 'airport') => {
+const WS_URL = (twinId = 'default') => {
   // Use window.location.host so the Vite proxy forwards the WebSocket and includes the HttpOnly cookie
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.host}/ws/kpis?domain=${domain}`;
+  return `${protocol}//${window.location.host}/ws/kpis?twin_id=${twinId}`;
 };
 
 const STATUS = {
@@ -24,7 +24,7 @@ const STATUS = {
   OFFLINE: 'offline',
 };
 
-export default function useKpiWebSocket(domain = 'airport') {
+export default function useKpiWebSocket(twinId = 'default') {
   const [status, setStatus] = useState(STATUS.CONNECTING);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [messageCount, setMessageCount] = useState(0);
@@ -38,7 +38,7 @@ export default function useKpiWebSocket(domain = 'airport') {
 
     try {
       setStatus(STATUS.CONNECTING);
-      const ws = new WebSocket(WS_URL(domain));
+      const ws = new WebSocket(WS_URL(twinId));
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -91,7 +91,7 @@ export default function useKpiWebSocket(domain = 'airport') {
     } catch (e) {
       setStatus(STATUS.OFFLINE);
     }
-  }, [domain]);
+  }, [twinId]);
 
   useEffect(() => {
     mounted.current = true;

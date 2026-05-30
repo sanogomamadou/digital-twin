@@ -97,7 +97,7 @@ class FileConnector(BaseConnector):
             rules = assignment.get("rules", {})
             status = self.compute_status(value, rules)
 
-            readings.append(KpiReading(user_id=self.user_id, component_id=assignment["component_id"],
+            readings.append(KpiReading(twin_id=self.twin_id, user_id=self.user_id, component_id=assignment["component_id"],
                 kpi_name=assignment["kpi_name"],
                 value=round(value, 3),
                 unit=assignment.get("unit", ""),

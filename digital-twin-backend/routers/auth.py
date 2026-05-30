@@ -72,6 +72,38 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserDB:
     return user
 
 
+def get_user_id_for_read(request: Request) -> int:
+    """Dependency that extracts user_id from either access_token or share_token for read-only routes."""
+    token = request.cookies.get("access_token")
+    share_token = request.cookies.get("share_token")
+    
+    user_id = None
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id = payload.get("sub")
+        except:
+            pass
+            
+    if not user_id and share_token:
+        try:
+            payload = jwt.decode(share_token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id = payload.get("sub")
+        except:
+            pass
+            
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate read credentials",
+        )
+    
+    try:
+        return int(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user id in token")
+
+
 @router.post("/register", response_model=UserRead)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(UserDB).filter(UserDB.username == user_data.username).first()

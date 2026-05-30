@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class KpiReading:
     """A single real-time KPI measurement."""
+    user_id: int
     component_id: str
     kpi_name: str
     value: float

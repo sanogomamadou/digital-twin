@@ -5,26 +5,32 @@ import json
 import os
 import psycopg2
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
+from routers.auth import get_current_user
+from db.database import UserDB
 
 router = APIRouter(prefix="/source", tags=["Data Source"])
 
 # ── Shared state ──────────────────────────────────────────────────────────────
-_source_state = {
-    "domain": "factory",
-    "columns": [],
-    "assignments": {},
-    "connected_at": None,
-    "streaming": False,
-    "source_type": "postgres",
-    "telemetry_db_url": None,
-    "telemetry_table": None,
-    "timestamp_col": "timestamp",
-    "component_id_col": "component_id",
-    "credentials": {}
-}
+_source_states = {}
+_active_connectors = {}
+
+def get_default_source_state():
+    return {
+        "domain": "factory",
+        "columns": [],
+        "assignments": {},
+        "connected_at": None,
+        "streaming": False,
+        "source_type": "postgres",
+        "telemetry_db_url": None,
+        "telemetry_table": None,
+        "timestamp_col": "timestamp",
+        "component_id_col": "component_id",
+        "credentials": {}
+    }
 
 SOURCE_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "source_data")
 ASSIGNMENTS_FILE = os.path.join(SOURCE_DATA_DIR, "db_assignments.json")
@@ -34,16 +40,24 @@ def _load_saved_assignments():
     if os.path.exists(ASSIGNMENTS_FILE):
         with open(ASSIGNMENTS_FILE) as f:
             saved = json.load(f)
-            _source_state["assignments"] = saved.get("assignments", {})
-            _source_state["domain"] = saved.get("domain", "factory")
-            _source_state["source_type"] = saved.get("source_type", "postgres")
-            _source_state["telemetry_db_url"] = saved.get("telemetry_db_url")
-            _source_state["telemetry_table"] = saved.get("telemetry_table")
-            _source_state["timestamp_col"] = saved.get("timestamp_col", "timestamp")
-            _source_state["component_id_col"] = saved.get("component_id_col", "component_id")
-            _source_state["credentials"] = saved.get("credentials", {})
+            # handle backward compatibility if old format
+            if "domain" in saved:
+                _source_states["1"] = saved
+            else:
+                for k, v in saved.items():
+                    _source_states[k] = v
 
 _load_saved_assignments()
+
+def _get_user_state(user_id: int):
+    uid = str(user_id)
+    if uid not in _source_states:
+        _source_states[uid] = get_default_source_state()
+    return _source_states[uid]
+
+def _save_states():
+    with open(ASSIGNMENTS_FILE, "w") as f:
+        json.dump(_source_states, f, indent=2)
 
 class ColAssignment(BaseModel):
     kpi_id: str
@@ -118,7 +132,10 @@ class ConnectPayload(BaseModel):
     credentials: Dict[str, Any] = {}
 
 @router.post("/connect")
-def connect_telemetry_db(payload: ConnectPayload):
+def connect_telemetry_db(payload: ConnectPayload, current_user: UserDB = Depends(get_current_user)):
+    user_id = current_user.id
+    user_state = _get_user_state(user_id)
+
     tables = []
     try:
         stype = payload.source_type
@@ -156,9 +173,9 @@ def connect_telemetry_db(payload: ConnectPayload):
         elif stype in ["kafka", "mqtt"]:
             tables = [payload.credentials.get("topic", "default_topic")]
 
-        _source_state["source_type"] = stype
-        _source_state["telemetry_db_url"] = payload.db_url
-        _source_state["credentials"] = payload.credentials
+        user_state["source_type"] = stype
+        user_state["telemetry_db_url"] = payload.db_url
+        user_state["credentials"] = payload.credentials
         return {"connected": True, "tables": tables}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Connection failed: {e}")
@@ -169,51 +186,57 @@ class TablePayload(BaseModel):
     component_id_col: str = "component_id"
 
 @router.post("/table")
-def select_table(payload: TablePayload):
-    _source_state["telemetry_table"] = payload.table_name
-    _source_state["timestamp_col"] = payload.timestamp_col
-    _source_state["component_id_col"] = payload.component_id_col
+def select_table(payload: TablePayload, current_user: UserDB = Depends(get_current_user)):
+    user_id = current_user.id
+    user_state = _get_user_state(user_id)
+
+    user_state["telemetry_table"] = payload.table_name
+    user_state["timestamp_col"] = payload.timestamp_col
+    user_state["component_id_col"] = payload.component_id_col
     
-    _source_state["columns"] = get_db_columns(
+    user_state["columns"] = get_db_columns(
         payload.table_name, 
-        _source_state["telemetry_db_url"], 
-        _source_state["source_type"],
-        _source_state["credentials"],
+        user_state["telemetry_db_url"], 
+        user_state["source_type"],
+        user_state["credentials"],
         exclude_cols=[payload.timestamp_col, payload.component_id_col]
     )
     
     return {"table": payload.table_name, "timestamp_col": payload.timestamp_col, "component_id_col": payload.component_id_col}
 
 @router.get("/schema")
-def get_schema():
-    table = _source_state.get("telemetry_table")
-    db_url = _source_state.get("telemetry_db_url")
-    stype = _source_state.get("source_type", "postgres")
-    creds = _source_state.get("credentials", {})
+def get_schema(current_user: UserDB = Depends(get_current_user)):
+    user_id = current_user.id
+    user_state = _get_user_state(user_id)
+
+    table = user_state.get("telemetry_table")
+    db_url = user_state.get("telemetry_db_url")
+    stype = user_state.get("source_type", "postgres")
+    creds = user_state.get("credentials", {})
     cols = get_db_columns(table, db_url, stype, creds)
     
     return {
         "table": table,
         "columns": cols,
-        "assignments": _source_state.get("assignments", {}),
-        "streaming": _source_state.get("streaming", False),
+        "assignments": user_state.get("assignments", {}),
+        "streaming": user_state.get("streaming", False),
     }
 
-def get_connector_instance():
-    stype = _source_state.get("source_type", "postgres")
+def get_connector_instance(user_id: int):
+    user_state = _get_user_state(user_id)
+
+    stype = user_state.get("source_type", "postgres")
     config = {
-        "db_url": _source_state.get("telemetry_db_url"),
-        "table_name": _source_state.get("telemetry_table"),
-        "timestamp_col": _source_state.get("timestamp_col"),
-        "component_id_col": _source_state.get("component_id_col"),
+        "db_url": user_state.get("telemetry_db_url"),
+        "table_name": user_state.get("telemetry_table"),
+        "timestamp_col": user_state.get("timestamp_col"),
+        "component_id_col": user_state.get("component_id_col"),
+        "user_id": user_id,
     }
-    config.update(_source_state.get("credentials", {}))
+    config.update(user_state.get("credentials", {}))
 
     if stype == "postgres":
-        from connectors.postgres_connector import PostgresConnector, get_postgres_connector
-        pc = get_postgres_connector()
-        if pc:
-            return pc
+        from connectors.postgres_connector import PostgresConnector
         return PostgresConnector(config)
     elif stype == "mongo":
         from connectors.mongo_connector import MongoConnector
@@ -224,25 +247,24 @@ def get_connector_instance():
     elif stype == "cassandra":
         from connectors.cassandra_connector import CassandraConnector
         return CassandraConnector(config)
-    elif stype == "databricks":
-        from connectors.databricks_connector import DatabricksConnector
-        return DatabricksConnector(config)
-    elif stype == "mqtt":
-        from connectors.mqtt_connector import MqttConnector
-        return MqttConnector(config)
     return None
 
 # We must manage the active connector globally to stop the old one when assignments change
-_active_connector = None
 
-def register_active_connector(connector):
+def get_all_user_states():
+    return _source_states
+
+def register_active_connector(user_id: int, connector):
     """Called by main.py at startup to register the boot connector."""
-    global _active_connector
-    _active_connector = connector
+    global _active_connectors
+    _active_connectors[user_id] = connector
 
 @router.post("/assign")
-async def assign_columns(payload: AssignmentsPayload):
-    global _active_connector
+async def assign_columns(payload: AssignmentsPayload, current_user: UserDB = Depends(get_current_user)):
+    user_id = current_user.id
+    user_state = _get_user_state(user_id)
+
+    global _active_connectors
     # REPLACE all assignments — the frontend sends the complete set for the current twin.
     # Merging caused stale cross-domain assignments (e.g. airport KPIs in a factory twin).
     new_assignments = {}
@@ -256,11 +278,11 @@ async def assign_columns(payload: AssignmentsPayload):
             "interaction": a.interaction,
         }
     
-    _source_state["assignments"] = new_assignments
-    _source_state["domain"] = payload.domain
-    _source_state["streaming"] = True
-    _source_state["telemetry_table"] = f"{payload.domain}_data"
-    _source_state["connected_at"] = _source_state.get("connected_at") or datetime.utcnow().isoformat()
+    user_state["assignments"] = new_assignments
+    user_state["domain"] = payload.domain
+    user_state["streaming"] = True
+    user_state["telemetry_table"] = f"{payload.domain}_data"
+    user_state["connected_at"] = user_state.get("connected_at") or datetime.utcnow().isoformat()
 
     try:
         from connectors.base import KPI_BUS
@@ -271,8 +293,7 @@ async def assign_columns(payload: AssignmentsPayload):
     except Exception as e:
         print(f"Failed to flush KPI bus: {e}")
 
-    with open(ASSIGNMENTS_FILE, "w") as f:
-        json.dump(_source_state, f, indent=2)
+    _save_states()
 
     try:
         # Prefer updating the existing connector's assignments in-place
@@ -285,26 +306,26 @@ async def assign_columns(payload: AssignmentsPayload):
             existing_pc.update_assignments(
                 new_assignments,
                 payload.domain,
-                db_url=_source_state.get("telemetry_db_url"),
-                table_name=_source_state.get("telemetry_table") or f"{payload.domain}_data",
-                timestamp_col=_source_state.get("timestamp_col", "timestamp"),
-                component_id_col=_source_state.get("component_id_col", "component_id"),
+                db_url=user_state.get("telemetry_db_url"),
+                table_name=user_state.get("telemetry_table") or f"{payload.domain}_data",
+                timestamp_col=user_state.get("timestamp_col", "timestamp"),
+                component_id_col=user_state.get("component_id_col", "component_id"),
             )
             # Clear stale last_timestamps so new component IDs get fresh queries
             existing_pc.last_timestamps.clear()
-            _active_connector = existing_pc
+            _active_connectors[user_id] = existing_pc
             print(f"[assign] Hot-updated running connector for domain={payload.domain}, {len(new_assignments)} KPIs")
         else:
             # No running connector — stop old one if any and start fresh
-            if _active_connector:
+            if _active_connectors.get(user_id):
                 import asyncio
-                asyncio.create_task(_active_connector.stop())
+                asyncio.create_task(_active_connectors.get(user_id).stop())
             
-            pc = get_connector_instance()
+            pc = get_connector_instance(current_user.id)
             if pc:
                 pc.update_assignments(new_assignments, payload.domain)
                 pc.last_timestamps.clear()
-                _active_connector = pc
+                _active_connectors[user_id] = pc
                 import asyncio
                 asyncio.create_task(pc.start())
                 print(f"[assign] Started new connector for domain={payload.domain}, {len(new_assignments)} KPIs")
@@ -313,7 +334,9 @@ async def assign_columns(payload: AssignmentsPayload):
 
     return {"saved": len(new_assignments), "assignments": new_assignments}
 
-def apply_assignments_sync(domain: str, assignments_list: list):
+def apply_assignments_sync(user_id: int, domain: str, assignments_list: list):
+    user_state = _get_user_state(user_id)
+
     """Re-apply KPI assignments when loading a twin.
     
     - If the twin has no kpiAssignments, skip the connector update so the
@@ -322,7 +345,7 @@ def apply_assignments_sync(domain: str, assignments_list: list):
       get corrupted when multiple twins with different domains are loaded).
     - Always derive the table name from the current domain.
     """
-    global _active_connector
+    global _active_connectors
 
     new_assignments = {}
     for a in assignments_list:
@@ -358,15 +381,15 @@ def apply_assignments_sync(domain: str, assignments_list: list):
     saved_db_url = os.getenv("TELEMETRY_DB_URL", "postgresql://postgres:postgrespassword@localhost:5433/telemetry_db")
     saved_table  = f"{domain}_data"  # always derived from the twin's domain
 
-    _source_state["assignments"]       = new_assignments
-    _source_state["domain"]            = domain
-    _source_state["streaming"]         = True
-    _source_state["connected_at"]      = datetime.utcnow().isoformat()
-    _source_state["telemetry_db_url"]  = saved_db_url
-    _source_state["telemetry_table"]   = saved_table
-    _source_state["timestamp_col"]     = "timestamp"
-    _source_state["component_id_col"]  = "component_id"
-    _source_state["source_type"]       = _source_state.get("source_type", "postgres")
+    user_state["assignments"]       = new_assignments
+    user_state["domain"]            = domain
+    user_state["streaming"]         = True
+    user_state["connected_at"]      = datetime.utcnow().isoformat()
+    user_state["telemetry_db_url"]  = saved_db_url
+    user_state["telemetry_table"]   = saved_table
+    user_state["timestamp_col"]     = "timestamp"
+    user_state["component_id_col"]  = "component_id"
+    user_state["source_type"]       = user_state.get("source_type", "postgres")
 
     try:
         from connectors.base import KPI_BUS
@@ -377,9 +400,7 @@ def apply_assignments_sync(domain: str, assignments_list: list):
     except Exception:
         pass
 
-    with open(ASSIGNMENTS_FILE, "w") as f:
-        import json as _json2
-        _json2.dump(_source_state, f, indent=2)
+    _save_states()
 
     try:
         from connectors.postgres_connector import get_postgres_connector
@@ -394,18 +415,18 @@ def apply_assignments_sync(domain: str, assignments_list: list):
                 table_name=saved_table,
             )
             existing_pc.last_timestamps.clear()
-            _active_connector = existing_pc
+            _active_connectors[user_id] = existing_pc
         else:
             # Stop old one and start fresh
-            if _active_connector:
+            if _active_connectors.get(user_id):
                 import asyncio
                 try:
                     loop = asyncio.get_running_loop()
-                    loop.create_task(_active_connector.stop())
+                    loop.create_task(_active_connectors.get(user_id).stop())
                 except RuntimeError:
                     pass
 
-            pc = get_connector_instance()
+            pc = get_connector_instance(user_id)
             if pc:
                 pc.update_assignments(
                     new_assignments,
@@ -414,7 +435,7 @@ def apply_assignments_sync(domain: str, assignments_list: list):
                     table_name=saved_table,
                 )
                 pc.last_timestamps.clear()
-                _active_connector = pc
+                _active_connectors[user_id] = pc
                 import asyncio
                 try:
                     loop = asyncio.get_running_loop()
@@ -431,47 +452,56 @@ class ProposeKpisRequest(BaseModel):
     components: Optional[List[Dict[str, str]]] = []
 
 @router.post("/propose_kpis")
-async def propose_kpis_endpoint(payload: ProposeKpisRequest):
+async def propose_kpis_endpoint(payload: ProposeKpisRequest, current_user: UserDB = Depends(get_current_user)):
+    user_id = current_user.id
+    user_state = _get_user_state(user_id)
+
     from agents.kpi_agent import propose_kpis
     kpis = await propose_kpis(payload.domain, payload.columns, payload.components)
     return {"kpis": kpis}
 
 @router.get("/status")
-def get_status():
-    global _active_connector
-    if len(_source_state["columns"]) == 0 and _source_state.get("telemetry_table"):
-        _source_state["columns"] = get_db_columns(
-            _source_state["telemetry_table"], 
-            _source_state["telemetry_db_url"],
-            _source_state.get("source_type", "postgres"),
-            _source_state.get("credentials", {}),
-            exclude_cols=[_source_state.get("timestamp_col", "timestamp"), _source_state.get("component_id_col", "component_id")]
+def get_status(current_user: UserDB = Depends(get_current_user)):
+    user_id = current_user.id
+    user_state = _get_user_state(user_id)
+
+    global _active_connectors
+    if len(user_state["columns"]) == 0 and user_state.get("telemetry_table"):
+        user_state["columns"] = get_db_columns(
+            user_state["telemetry_table"], 
+            user_state["telemetry_db_url"],
+            user_state.get("source_type", "postgres"),
+            user_state.get("credentials", {}),
+            exclude_cols=[user_state.get("timestamp_col", "timestamp"), user_state.get("component_id_col", "component_id")]
         )
         
-    assigned_count = len(_source_state.get("assignments", {}))
+    assigned_count = len(user_state.get("assignments", {}))
 
     return {
-        "connected": len(_source_state["columns"]) > 0 or _source_state.get("source_type") in ["kafka", "mqtt"],
-        "streaming": _source_state.get("streaming", False) or assigned_count > 0,
-        "domain": _source_state.get("domain"),
+        "connected": len(user_state["columns"]) > 0 or user_state.get("source_type") in ["kafka", "mqtt"],
+        "streaming": user_state.get("streaming", False) or assigned_count > 0,
+        "domain": user_state.get("domain"),
         "assignedColumns": assigned_count,
-        "connectedAt": _source_state.get("connected_at"),
-        "connectorRunning": _active_connector._running if _active_connector else False,
+        "connectedAt": user_state.get("connected_at"),
+        "connectorRunning": _active_connectors.get(user_id)._running if _active_connectors.get(user_id) else False,
     }
 
 @router.delete("")
-def disconnect_source():
-    global _active_connector
-    if _active_connector:
+def disconnect_source(current_user: UserDB = Depends(get_current_user)):
+    user_id = current_user.id
+    user_state = _get_user_state(user_id)
+
+    global _active_connectors
+    if _active_connectors.get(user_id):
         import asyncio
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(_active_connector.stop())
+            loop.create_task(_active_connectors.get(user_id).stop())
         except:
             pass
-        _active_connector = None
+        if user_id in _active_connectors: del _active_connectors[user_id]
 
-    _source_state.update({
+    user_state.update({
         "columns": [], "streaming": False, "assignments": {},
         "telemetry_db_url": None, "telemetry_table": None,
         "timestamp_col": "timestamp", "component_id_col": "component_id",

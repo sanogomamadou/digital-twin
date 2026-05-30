@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
 from sqlalchemy.orm import Session
-from db.database import get_db
+from db.database import get_db, UserDB
+from routers.auth import get_current_user
 from db import crud
 from models.schemas import KpiImportResponse, KpiRecord
 from services.data_service import parse_upload, detect_columns, df_to_kpi_records
@@ -19,6 +20,7 @@ async def import_kpi_file(
     unit_col: str = Form(None),
     unit: str = Form(""),
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
     """Upload a CSV or Excel file and store KPI data for a component."""
     if not file.filename.endswith((".csv", ".xlsx", ".xls")):
@@ -45,7 +47,7 @@ async def import_kpi_file(
         for r in records:
             r["unit"] = unit
 
-    rows_saved = crud.insert_kpi_records(db, component_id, kpi_name, records)
+    rows_saved = crud.insert_kpi_records(db, current_user.id, component_id, kpi_name, records)
 
     preview = [{v_col: r["value"], "timestamp": str(r["timestamp"]), "unit": r["unit"]} for r in records[:5]]
     return KpiImportResponse(
@@ -64,9 +66,10 @@ async def push_realtime_kpi(
     value: float,
     unit: str = "",
     db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user),
 ):
     """Push a single real-time KPI reading."""
-    crud.insert_kpi_records(db, component_id, kpi_name, [{
+    crud.insert_kpi_records(db, current_user.id, component_id, kpi_name, [{
         "value": value, "unit": unit,
         "timestamp": datetime.utcnow(), "source": "realtime"
     }])
@@ -74,15 +77,15 @@ async def push_realtime_kpi(
 
 
 @router.get("/summary")
-def get_kpi_summary(db: Session = Depends(get_db)):
+def get_kpi_summary(db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     """Get aggregated KPI summary across all components."""
-    return crud.get_all_kpi_summary(db)
+    return crud.get_all_kpi_summary(db, current_user.id)
 
 
 @router.get("/{component_id}")
-def get_component_kpis(component_id: str, kpi_name: str = None, limit: int = 200, db: Session = Depends(get_db)):
+def get_component_kpis(component_id: str, kpi_name: str = None, limit: int = 200, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     """Get raw KPI data for a specific component."""
-    records = crud.get_kpi_data(db, component_id, kpi_name, limit)
+    records = crud.get_kpi_data(db, current_user.id, component_id, kpi_name, limit)
     return [
         {"id": r.id, "componentId": r.component_id, "kpiName": r.kpi_name,
          "value": r.value, "unit": r.unit, "timestamp": str(r.timestamp), "source": r.source}
@@ -91,7 +94,7 @@ def get_component_kpis(component_id: str, kpi_name: str = None, limit: int = 200
 
 
 @router.delete("/{component_id}")
-def delete_component_kpis(component_id: str, db: Session = Depends(get_db)):
+def delete_component_kpis(component_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     """Clear all KPI data for a component."""
-    crud.delete_kpi_data(db, component_id)
+    crud.delete_kpi_data(db, current_user.id, component_id)
     return {"status": "deleted", "componentId": component_id}

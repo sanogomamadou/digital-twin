@@ -11,6 +11,7 @@ class CassandraConnector(BaseConnector):
 
     def __init__(self, config: dict):
         super().__init__(config)
+        self.user_id = config.get("user_id", 1)
         self.contact_points = config.get("db_url").split(',') # e.g. "127.0.0.1,127.0.0.2"
         self.keyspace = config.get("db_name")
         self.table_name = config.get("table_name")
@@ -68,7 +69,8 @@ class CassandraConnector(BaseConnector):
                                 val = float(row_dict[col_name])
                                 rules = mapping.get("rules", {})
                                 reading = KpiReading(
-                                    component_id=comp_id,
+                            user_id=self.user_id,
+                            component_id=comp_id,
                                     kpi_name=mapping.get("kpi_name", col_name),
                                     value=val,
                                     unit=mapping.get("unit", ""),

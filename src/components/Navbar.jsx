@@ -1,5 +1,6 @@
 import useTwinStore from '../store/useTwinStore';
 import useAuthStore from '../store/useAuthStore';
+import { logoutUser } from '../services/api';
 import { Home, ChevronRight, LogOut, User } from 'lucide-react';
 
 const STEPS = [
@@ -14,6 +15,15 @@ export default function Navbar() {
     const { currentStep, setStep } = useTwinStore();
     const { user, logout } = useAuthStore();
     const isInWizard = currentStep >= 1;
+
+    const handleLogout = async () => {
+        try {
+            await logoutUser();
+        } catch (e) {
+            console.error(e);
+        }
+        logout();
+    };
 
     return (
         <nav style={{
@@ -96,7 +106,7 @@ export default function Navbar() {
                             {user.username}
                         </div>
                         <button
-                            onClick={logout}
+                            onClick={handleLogout}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '4px',
                                 background: 'none', border: 'none', color: 'var(--text-3)',

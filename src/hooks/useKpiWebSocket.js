@@ -12,9 +12,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import useTwinStore from '../store/useTwinStore';
 
 const WS_URL = (domain = 'airport') => {
-  // Always connect to localhost:8000 directly to avoid Vite proxy ECONNRESET and 127.0.0.1 extension blocks
+  // Use window.location.host so the Vite proxy forwards the WebSocket and includes the HttpOnly cookie
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//localhost:8000/ws/kpis?domain=${domain}`;
+  return `${protocol}//${window.location.host}/ws/kpis?domain=${domain}`;
 };
 
 const STATUS = {

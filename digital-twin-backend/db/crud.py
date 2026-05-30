@@ -91,9 +91,10 @@ def layout_db_to_schema(db_layout: LayoutStateDB) -> LayoutStateSchema:
 
 # ─── KPI CRUD ─────────────────────────────────────────────────────────────────
 
-def insert_kpi_records(db: Session, component_id: str, kpi_name: str, records: list[dict]) -> int:
+def insert_kpi_records(db: Session, user_id: int, component_id: str, kpi_name: str, records: list[dict]) -> int:
     db_records = [
         KpiDataDB(
+            user_id=user_id,
             component_id=component_id,
             kpi_name=kpi_name,
             value=float(r.get("value", 0)),
@@ -108,8 +109,8 @@ def insert_kpi_records(db: Session, component_id: str, kpi_name: str, records: l
     return len(db_records)
 
 
-def get_kpi_data(db: Session, component_id: str | None = None, kpi_name: str | None = None, limit: int = 1000) -> list[KpiDataDB]:
-    q = db.query(KpiDataDB)
+def get_kpi_data(db: Session, user_id: int, component_id: str | None = None, kpi_name: str | None = None, limit: int = 1000) -> list[KpiDataDB]:
+    q = db.query(KpiDataDB).filter(KpiDataDB.user_id == user_id)
     if component_id:
         q = q.filter(KpiDataDB.component_id == component_id)
     if kpi_name:
@@ -117,20 +118,21 @@ def get_kpi_data(db: Session, component_id: str | None = None, kpi_name: str | N
     return q.order_by(KpiDataDB.timestamp.desc()).limit(limit).all()
 
 
-def get_all_kpi_summary(db: Session) -> list[dict]:
+def get_all_kpi_summary(db: Session, user_id: int) -> list[dict]:
     from sqlalchemy import func, text
     result = db.execute(text("""
         SELECT component_id, kpi_name, COUNT(*) as count,
                MIN(value) as min_val, MAX(value) as max_val, AVG(value) as avg_val,
                MAX(timestamp) as last_seen
         FROM kpi_data
+        WHERE user_id = :user_id
         GROUP BY component_id, kpi_name
-    """)).fetchall()
+    """), {"user_id": user_id}).fetchall()
     return [dict(r._mapping) for r in result]
 
 
-def delete_kpi_data(db: Session, component_id: str):
-    db.query(KpiDataDB).filter(KpiDataDB.component_id == component_id).delete()
+def delete_kpi_data(db: Session, user_id: int, component_id: str):
+    db.query(KpiDataDB).filter(KpiDataDB.user_id == user_id, KpiDataDB.component_id == component_id).delete()
     db.commit()
 
 

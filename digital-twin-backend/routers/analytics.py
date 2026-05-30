@@ -30,6 +30,7 @@ async def nlq_query(
     try:
         records = crud.get_kpi_data(
             db,
+            user_id=current_user.id,
             component_id=request.componentId,
             limit=2000,
         )
@@ -95,7 +96,7 @@ async def generate_report(
     Generate an AI PDF report text based on the current twin data and historical DB data.
     """
     try:
-        records = crud.get_kpi_data(db, limit=5000)
+        records = crud.get_kpi_data(db, user_id=current_user.id, limit=5000)
         report_text = await run_report_agent(request.model_dump(), records)
         return {"report": report_text}
     except Exception as e:

@@ -35,6 +35,7 @@ class PostgresConnector(BaseConnector):
         self.timestamp_col = config.get("timestamp_col", "timestamp")
         self.component_id_col = config.get("component_id_col", "component_id")
         self.poll_interval = float(config.get("poll_interval", 2.0))
+        self.user_id = config.get("user_id", 1)
         self.last_timestamps = {}  # Keep track of last seen row per component
 
     def update_assignments(self, assignments: dict, domain: str, db_url: str = None, table_name: str = None, timestamp_col: str = None, component_id_col: str = None):
@@ -133,6 +134,7 @@ class PostgresConnector(BaseConnector):
                                 ts = ts.replace(tzinfo=timezone.utc)
                                 
                             reading = KpiReading(
+                                user_id=self.user_id,
                                 component_id=comp_id,
                                 kpi_name=kpi_config.get("kpi_name", "KPI"),
                                 value=round(value, 3),

@@ -211,6 +211,7 @@ class SimulatorConnector(BaseConnector):
     def __init__(self, config: dict):
         super().__init__(config)
         self.domain = config.get("domain", "airport")
+        self.user_id = config.get("user_id", 1)
         self.anomaly_prob = config.get("anomaly_probability", 0.02)  # 2% chance per tick
         # State: random walk values per KPI
         self._current: dict[str, float] = {}
@@ -280,6 +281,7 @@ class SimulatorConnector(BaseConnector):
                 value = self._next_value(kpi_def)
                 status = self.compute_status(value, kpi_def.get("rules", {}))
                 reading = KpiReading(
+                    user_id=self.user_id,
                     component_id=kpi_def["component_id"],
                     kpi_name=kpi_def["kpi_name"],
                     value=value,

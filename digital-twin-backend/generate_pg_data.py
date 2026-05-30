@@ -147,62 +147,53 @@ def simulate_stream():
 
     try:
         while True:
-            # Dynamically read active component IDs from assignments
-            active_domain = "factory"
-            active_components = []
-
+            tasks_to_generate = []
             if os.path.exists(ASSIGNMENTS_FILE):
                 try:
                     with open(ASSIGNMENTS_FILE, "r") as f:
-                        saved = json.load(f)
-                        active_domain = saved.get("domain", "factory")
-                        assignments = saved.get("assignments", {})
-                        # Get unique component IDs mapped by the user
-                        active_components = list(set(
-                            a.get("component_id")
-                            for a in assignments.values()
-                            if a.get("component_id")
-                        ))
+                        saved_users = json.load(f)
+                        # Handle old format (single tenant) vs new format (multi-tenant)
+                        if "domain" in saved_users:
+                            saved_users = {"default": saved_users}
+                            
+                        for uid, saved in saved_users.items():
+                            domain = saved.get("domain", "factory")
+                            assignments = saved.get("assignments", {})
+                            components = list(set(
+                                a.get("component_id")
+                                for a in assignments.values()
+                                if a.get("component_id")
+                            ))
+                            if not components:
+                                components = COMPONENT_IDS.get(f"{domain}_data", ["generic_1"])
+                            tasks_to_generate.append((f"{domain}_data", components))
                 except Exception as eval_e:
                     print(f"Error reading assignments: {eval_e}")
 
-            # ── Domain switch guard ───────────────────────────────────────────
-            # If the domain changed (e.g. airport → factory), purge cached
-            # STATE so stale column schemas don't get inserted into the new table.
-            if active_domain != current_domain:
-                if current_domain is not None:
-                    print(f"🔄 Domain switched {current_domain} → {active_domain}: resetting state cache.")
-                STATE.clear()
-                current_domain = active_domain
-            # ─────────────────────────────────────────────────────────────────
+            if not tasks_to_generate:
+                tasks_to_generate.append(("factory_data", COMPONENT_IDS.get("factory_data", ["generic_1"])))
 
-            table_name = f"{active_domain}_data"
+            for table_name, active_components in tasks_to_generate:
+                success_count = 0
+                for comp_id in active_components:
+                    data = generate_random_data(table_name, comp_id)
+                    columns = list(data.keys())
+                    values = list(data.values())
 
-            # If user hasn't mapped anything, fallback to default generic IDs
-            if not active_components:
-                active_components = COMPONENT_IDS.get(table_name, ["generic_1"])
+                    col_str = ", ".join(columns)
+                    val_placeholders = ", ".join(["%s"] * len(values))
 
-            success_count = 0
-            for comp_id in active_components:
-                data = generate_random_data(table_name, comp_id)
-                columns = list(data.keys())
-                values = list(data.values())
+                    sql = f"INSERT INTO {table_name} ({col_str}) VALUES ({val_placeholders})"
+                    try:
+                        cursor.execute(sql, values)
+                        success_count += 1
+                    except Exception as e:
+                        print(f"Error inserting into {table_name}: {e}")
+                        STATE.pop(comp_id, None)
 
-                col_str = ", ".join(columns)
-                val_placeholders = ", ".join(["%s"] * len(values))
+                print(f"[{datetime.now().strftime('%H:%M:%S')}] Inserted {success_count}/{len(active_components)} rows for {table_name}.")
 
-                sql = f"INSERT INTO {table_name} ({col_str}) VALUES ({val_placeholders})"
-                try:
-                    cursor.execute(sql, values)
-                    success_count += 1
-                except Exception as e:
-                    print(f"Error inserting into {table_name}: {e}")
-                    # Clear this component's cached state so it reinitialises cleanly next tick
-                    STATE.pop(comp_id, None)
-
-            # Print timestamp to indicate activity
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] Inserted {success_count}/{len(active_components)} rows for {table_name}.")
-            time.sleep(2)  # Stream new data every 2 seconds
+            time.sleep(2)
 
     except KeyboardInterrupt:
         print("\n⏹️ Stopped data generation.")

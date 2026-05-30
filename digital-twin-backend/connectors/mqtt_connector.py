@@ -38,6 +38,7 @@ class MqttConnector(BaseConnector):
 
     def __init__(self, config: dict):
         super().__init__(config)
+        self.user_id = config.get("user_id", 1)
         self.broker = config.get("db_url", "localhost")
         self.port = int(config.get("port", 1883))
         self.topic_prefix = config.get("table_name", "dt/#")
@@ -76,7 +77,8 @@ class MqttConnector(BaseConnector):
                 rules = payload.get("rules", {})
 
                 reading = KpiReading(
-                    component_id=component_id,
+                            user_id=self.user_id,
+                            component_id=component_id,
                     kpi_name=kpi_name.replace("_", " ").title(),
                     value=value,
                     unit=unit,

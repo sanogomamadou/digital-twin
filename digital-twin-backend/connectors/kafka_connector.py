@@ -12,6 +12,7 @@ class KafkaConnector(BaseConnector):
 
     def __init__(self, config: dict):
         super().__init__(config)
+        self.user_id = config.get("user_id", 1)
         self.bootstrap_servers = config.get("db_url") # Map to bootstrap servers
         self.topic = config.get("table_name") # Map to topic
         self.timestamp_col = config.get("timestamp_col", "timestamp")
@@ -63,6 +64,7 @@ class KafkaConnector(BaseConnector):
                         val = float(payload[col_name])
                         rules = mapping.get("rules", {})
                         reading = KpiReading(
+                            user_id=self.user_id,
                             component_id=comp_id,
                             kpi_name=mapping.get("kpi_name", col_name),
                             value=val,

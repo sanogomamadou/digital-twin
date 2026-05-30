@@ -11,6 +11,7 @@ class MongoConnector(BaseConnector):
 
     def __init__(self, config: dict):
         super().__init__(config)
+        self.user_id = config.get("user_id", 1)
         self.db_url = config.get("db_url")
         self.db_name = config.get("db_name", "digital_twin")
         self.collection_name = config.get("table_name") # re-use table_name as collection_name
@@ -65,7 +66,8 @@ class MongoConnector(BaseConnector):
                             val = float(row[col_name])
                             rules = mapping.get("rules", {})
                             reading = KpiReading(
-                                component_id=comp_id,
+                            user_id=self.user_id,
+                            component_id=comp_id,
                                 kpi_name=mapping.get("kpi_name", col_name),
                                 value=val,
                                 unit=mapping.get("unit", ""),

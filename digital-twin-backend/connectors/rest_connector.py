@@ -57,6 +57,7 @@ class RestConnector(BaseConnector):
 
     def __init__(self, config: dict):
         super().__init__(config)
+        self.user_id = config.get("user_id", 1)
         self._endpoints: list[dict] = []
 
     def _load_config(self):
@@ -84,7 +85,8 @@ class RestConnector(BaseConnector):
             value = float(raw)
             rules = ep.get("rules", {})
             reading = KpiReading(
-                component_id=ep["component_id"],
+                            user_id=self.user_id,
+                            component_id=ep["component_id"],
                 kpi_name=ep["kpi_name"],
                 value=value,
                 unit=ep.get("unit", ""),

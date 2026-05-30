@@ -50,6 +50,7 @@ class KpiDataDB(Base):
     __tablename__ = "kpi_data"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, index=True, nullable=False)
     component_id = Column(String, nullable=False, index=True)
     kpi_name = Column(String, nullable=False)
     value = Column(Float)

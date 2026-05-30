@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 import bcrypt
 
@@ -103,7 +103,7 @@ def delete_share_link(share_id: str, db: Session = Depends(get_db), current_user
 
 
 @router.post("/{share_id}/verify")
-def verify_share_link(share_id: str, verify_data: ShareLinkVerify, db: Session = Depends(get_db)):
+def verify_share_link(share_id: str, verify_data: ShareLinkVerify, response: Response, db: Session = Depends(get_db)):
     """Verify password for a share link and return the twin_id if successful."""
     db_link = db.query(ShareLinkDB).filter(ShareLinkDB.id == share_id).first()
     if not db_link:
@@ -119,5 +119,20 @@ def verify_share_link(share_id: str, verify_data: ShareLinkVerify, db: Session =
         raise HTTPException(status_code=404, detail="Twin not found or deleted")
         
     schema = layout_db_to_schema(db_layout)
+    
+    # Issue a read-only share token so the guest can connect to the WebSocket
+    import jwt
+    from routers.auth import SECRET_KEY, ALGORITHM
+    share_token = jwt.encode(
+        {"sub": str(db_link.user_id), "share_id": share_id, "role": "guest", "domain": "shared"},
+        SECRET_KEY, algorithm=ALGORITHM
+    )
+    response.set_cookie(
+        key="share_token",
+        value=share_token,
+        httponly=True,
+        samesite="lax",
+        max_age=3600*24
+    )
     
     return {"success": True, "twin_id": db_link.twin_id, "state": schema.model_dump()}

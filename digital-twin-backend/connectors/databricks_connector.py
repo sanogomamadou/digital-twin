@@ -11,6 +11,7 @@ class DatabricksConnector(BaseConnector):
 
     def __init__(self, config: dict):
         super().__init__(config)
+        self.user_id = config.get("user_id", 1)
         self.server_hostname = config.get("db_url") # Map to server_hostname
         self.http_path = config.get("db_name")      # Map to http_path
         self.access_token = config.get("access_token")
@@ -79,7 +80,8 @@ class DatabricksConnector(BaseConnector):
                                 val = float(row_dict[col_name])
                                 rules = mapping.get("rules", {})
                                 reading = KpiReading(
-                                    component_id=comp_id,
+                            user_id=self.user_id,
+                            component_id=comp_id,
                                     kpi_name=mapping.get("kpi_name", col_name),
                                     value=val,
                                     unit=mapping.get("unit", ""),

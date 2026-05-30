@@ -37,6 +37,7 @@ class FileConnector(BaseConnector):
 
     def __init__(self, config: dict):
         super().__init__(config)
+        self.user_id = config.get("user_id", 1)
         global _instance
         _instance = self
 
@@ -96,8 +97,7 @@ class FileConnector(BaseConnector):
             rules = assignment.get("rules", {})
             status = self.compute_status(value, rules)
 
-            readings.append(KpiReading(
-                component_id=assignment["component_id"],
+            readings.append(KpiReading(user_id=self.user_id, component_id=assignment["component_id"],
                 kpi_name=assignment["kpi_name"],
                 value=round(value, 3),
                 unit=assignment.get("unit", ""),

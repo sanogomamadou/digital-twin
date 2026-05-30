@@ -64,40 +64,45 @@ async def _start_connectors():
     from connectors.postgres_connector import PostgresConnector
     from connectors.mqtt_connector import MqttConnector, MQTT_ENABLED
     from connectors.rest_connector import RestConnector, REST_ENABLED
-    from routers.data_source import get_source_state, register_active_connector
+    from routers.data_source import get_all_user_states, register_active_connector
 
-    state = get_source_state()
+    states = get_all_user_states()
+    if not states:
+        return
 
-    # Postgres connector — primary source
-    saved_assignments = state.get("assignments", {})
-    domain = state.get("domain", "factory")
-    telemetry_db_url = state.get("telemetry_db_url") or os.getenv(
-        "TELEMETRY_DB_URL",
-        "postgresql://postgres:postgrespassword@localhost:5433/telemetry_db",
-    )
-    telemetry_table = state.get("telemetry_table") or f"{domain}_data"
+    for user_id_str, state in states.items():
+        try:
+            user_id = int(user_id_str)
+        except ValueError:
+            continue
+            
+        saved_assignments = state.get("assignments", {})
+        domain = state.get("domain", "factory")
+        telemetry_db_url = state.get("telemetry_db_url") or os.getenv(
+            "TELEMETRY_DB_URL",
+            "postgresql://postgres:postgrespassword@localhost:5433/telemetry_db",
+        )
+        telemetry_table = state.get("telemetry_table") or f"{domain}_data"
 
-    pc = PostgresConnector({
-        "assignments": saved_assignments,
-        "domain": domain,
-        "db_url": telemetry_db_url,
-        "table_name": telemetry_table,
-        "poll_interval": 2.0,
-    })
-    _connectors.append(pc)
-    # Register as the active connector so /source/assign can properly replace it
-    register_active_connector(pc)
-    await pc.start()
-    logger.info(f"🐘 Postgres connector started — domain='{domain}', table='{telemetry_table}', assignments={len(saved_assignments)}")
+        pc = PostgresConnector({
+            "user_id": user_id,
+            "assignments": saved_assignments,
+            "domain": domain,
+            "db_url": telemetry_db_url,
+            "table_name": telemetry_table,
+            "poll_interval": 2.0,
+        })
+        _connectors.append(pc)
+        register_active_connector(user_id, pc)
+        await pc.start()
+        logger.info(f"🐘 Postgres connector started for user {user_id} — domain='{domain}', table='{telemetry_table}', assignments={len(saved_assignments)}")
 
-    # MQTT (optional, for real IoT sensors)
     if MQTT_ENABLED:
         mqtt = MqttConnector({})
         _connectors.append(mqtt)
         await mqtt.start()
         logger.info("📡 MQTT connector started")
 
-    # REST polling (optional, for vendor APIs)
     if REST_ENABLED:
         rest = RestConnector({})
         _connectors.append(rest)

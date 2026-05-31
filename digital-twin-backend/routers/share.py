@@ -1,3 +1,4 @@
+import os
 import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Response
@@ -139,6 +140,7 @@ def verify_share_link(share_id: str, verify_data: ShareLinkVerify, response: Res
         key="share_token",
         value=share_token,
         httponly=True,
+        secure=(os.getenv("ENVIRONMENT") == "production"),
         samesite="lax",
         max_age=3600*24
     )

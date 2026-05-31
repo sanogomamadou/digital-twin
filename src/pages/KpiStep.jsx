@@ -16,7 +16,7 @@ export default function KpiStep() {
 
     useEffect(() => {
         // Fetch DB schema for current domain
-        getTelemetrySchema(activeTwinId || 'default')
+        getTelemetrySchema(activeTwinId || 'default', selectedDomain)
             .then(data => {
                 setColumns(data.columns || []);
                 // Prioritize assignments saved in Zustand for this specific Twin

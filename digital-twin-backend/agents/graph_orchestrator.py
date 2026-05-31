@@ -2,7 +2,7 @@ from typing import TypedDict, Annotated, Sequence
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langgraph.graph import StateGraph, END, add_messages
 from langgraph.prebuilt import ToolNode
-from agents.tools import get_kpi_list, get_kpi_statistics, detect_kpi_anomalies, get_recent_values, analyze_with_pandas, search_documentation
+from agents.tools import get_kpi_list, get_kpi_statistics, detect_kpi_anomalies, get_recent_values, get_kpi_trend_over_time, compare_kpi_across_components, search_documentation
 from services.llm_service import get_llm
 
 # Define the state for the LangGraph
@@ -22,7 +22,7 @@ def create_analytics_orchestrator():
         raise ValueError("Groq LLM is not configured properly.")
 
     # 1. Define tools
-    tools = [get_kpi_list, get_kpi_statistics, detect_kpi_anomalies, get_recent_values, analyze_with_pandas, search_documentation]
+    tools = [get_kpi_list, get_kpi_statistics, detect_kpi_anomalies, get_recent_values, get_kpi_trend_over_time, compare_kpi_across_components, search_documentation]
     
     # 2. Bind tools to the LLM
     llm_with_tools = llm.bind_tools(tools)

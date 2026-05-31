@@ -16,7 +16,7 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY or SECRET_KEY == "supersecretkey_for_digital_twin_123":
     raise RuntimeError("SECRET_KEY must be set in production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours (reduced for security)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -136,6 +136,7 @@ def login(user_data: UserLogin, response: Response, db: Session = Depends(get_db
         key="access_token",
         value=access_token,
         httponly=True,
+        secure=(os.getenv("ENVIRONMENT") == "production"),
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
@@ -144,7 +145,12 @@ def login(user_data: UserLogin, response: Response, db: Session = Depends(get_db
 
 @router.post("/logout")
 def logout(response: Response):
-    response.delete_cookie(key="access_token", httponly=True, samesite="lax")
+    response.delete_cookie(
+        key="access_token", 
+        httponly=True, 
+        secure=(os.getenv("ENVIRONMENT") == "production"),
+        samesite="lax"
+    )
     return {"status": "logged_out"}
 
 

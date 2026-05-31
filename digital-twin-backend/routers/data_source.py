@@ -4,7 +4,31 @@ Data Source Router — Manages Database Connections and KPI mapping for multiple
 import json
 import os
 import psycopg2
+import re
+import socket
+import ipaddress
+from urllib.parse import urlparse
 from datetime import datetime
+
+def is_safe_identifier(name: str) -> bool:
+    if not name: return False
+    return bool(re.match(r"^[a-zA-Z0-9_.]+$", name))
+
+def validate_db_url(url: str) -> bool:
+    if os.getenv("ENVIRONMENT") != "production":
+        return True
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+        if not hostname:
+            return True # Not an IP/hostname based URL
+        ip = socket.gethostbyname(hostname)
+        ip_obj = ipaddress.ip_address(ip)
+        if ip_obj.is_private or ip_obj.is_loopback:
+            return False
+        return True
+    except Exception:
+        return False
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from db.database import get_db
@@ -33,9 +57,9 @@ def get_default_source_state():
         "credentials": {}
     }
 
-def get_user_state(db, twin_id: str) -> dict:
+def get_user_state(db, twin_id: str, user_id: int = None) -> dict:
     from db.crud import get_user_configuration
-    config = get_user_configuration(db, twin_id)
+    config = get_user_configuration(db, twin_id, user_id)
     if not config:
         return get_default_source_state()
     import json
@@ -91,7 +115,7 @@ def get_db_columns(table_name: str, db_url: str, source_type: str, credentials: 
     cols = []
     try:
         if source_type == "postgres":
-            conn = psycopg2.connect(db_url)
+            conn = psycopg2.connect(db_url, connect_timeout=3)
             cursor = conn.cursor()
             query = "SELECT column_name FROM information_schema.columns WHERE table_name = %s;"
             cursor.execute(query, (table_name,))
@@ -115,6 +139,8 @@ def get_db_columns(table_name: str, db_url: str, source_type: str, credentials: 
             cols = [row.column_name for row in rows]
             cluster.shutdown()
         elif source_type == "databricks":
+            if not is_safe_identifier(table_name):
+                raise ValueError("Invalid table name")
             from databricks import sql
             connection = sql.connect(
                 server_hostname=db_url,
@@ -144,13 +170,16 @@ class ConnectPayload(BaseModel):
 @router.post("/connect")
 def connect_telemetry_db(payload: ConnectPayload, twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = get_user_state(db, twin_id)
+    user_state = get_user_state(db, twin_id, user_id)
+    
+    if not validate_db_url(payload.db_url):
+        raise HTTPException(status_code=403, detail="Connection to private/local IPs is restricted in production.")
 
     tables = []
     try:
         stype = payload.source_type
         if stype == "postgres":
-            conn = psycopg2.connect(payload.db_url)
+            conn = psycopg2.connect(payload.db_url, connect_timeout=3)
             cursor = conn.cursor()
             cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
             tables = [row[0] for row in cursor.fetchall()]
@@ -199,7 +228,7 @@ class TablePayload(BaseModel):
 @router.post("/table")
 def select_table(payload: TablePayload, twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = get_user_state(db, twin_id)
+    user_state = get_user_state(db, twin_id, user_id)
 
     user_state["telemetry_table"] = payload.table_name
     user_state["timestamp_col"] = payload.timestamp_col
@@ -217,11 +246,21 @@ def select_table(payload: TablePayload, twin_id: str, db: Session = Depends(get_
     return {"table": payload.table_name, "timestamp_col": payload.timestamp_col, "component_id_col": payload.component_id_col}
 
 @router.get("/schema")
-def get_schema(twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
+def get_schema(twin_id: str, domain: str = None, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = get_user_state(db, twin_id)
+    user_state = get_user_state(db, twin_id, user_id)
 
-    table = user_state.get("telemetry_table")
+    saved_table = user_state.get("telemetry_table")
+    saved_domain = user_state.get("domain")
+    
+    # If the saved table is a standard default table, we can safely swap it to the new domain's default.
+    # If it's a custom table (configured in the wizard), we preserve it.
+    is_default_table = not saved_table or saved_table == f"{saved_domain}_data"
+    
+    if domain and is_default_table:
+        table = f"{domain}_data"
+    else:
+        table = saved_table
     db_url = user_state.get("telemetry_db_url")
     stype = user_state.get("source_type", "postgres")
     creds = user_state.get("credentials", {})
@@ -235,7 +274,7 @@ def get_schema(twin_id: str, db: Session = Depends(get_db), current_user: UserDB
     }
 
 def get_connector_instance(db, twin_id: str, user_id: int):
-    user_state = get_user_state(db, twin_id)
+    user_state = get_user_state(db, twin_id, user_id)
 
     stype = user_state.get("source_type", "postgres")
     config = {
@@ -269,7 +308,7 @@ def get_all_user_states(db):
     configs = get_all_user_configurations(db)
     states = {}
     for config in configs:
-        states[config.twin_id] = get_user_state(db, config.twin_id)
+        states[config.twin_id] = get_user_state(db, config.twin_id, config.user_id)
         states[config.twin_id]["user_id"] = config.user_id
     return states
 
@@ -281,7 +320,7 @@ def register_active_connector(twin_id: str, connector):
 @router.post("/assign")
 async def assign_columns(payload: AssignmentsPayload, twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = get_user_state(db, twin_id)
+    user_state = get_user_state(db, twin_id, user_id)
 
     global _active_connectors
     # REPLACE all assignments — the frontend sends the complete set for the current twin.
@@ -355,7 +394,7 @@ async def assign_columns(payload: AssignmentsPayload, twin_id: str, db: Session 
 def apply_assignments_sync(twin_id: str, user_id: int, domain: str, assignments_list: list):
     from db.database import SessionLocal
     with SessionLocal() as db:
-        user_state = get_user_state(db, twin_id)
+        user_state = get_user_state(db, twin_id, user_id)
 
     """Re-apply KPI assignments when loading a twin.
     
@@ -398,8 +437,8 @@ def apply_assignments_sync(twin_id: str, user_id: int, domain: str, assignments_
         return
 
     # ── Use env var for DB URL (reliable, not the shared file which can drift)
-    saved_db_url = os.getenv("TELEMETRY_DB_URL", "postgresql://postgres:postgrespassword@localhost:5433/telemetry_db")
-    saved_table  = f"{domain}_data"  # always derived from the twin's domain
+    saved_db_url = user_state.get("telemetry_db_url") or os.getenv("TELEMETRY_DB_URL", "postgresql://postgres:postgrespassword@localhost:5433/telemetry_db")
+    saved_table  = user_state.get("telemetry_table") or f"{domain}_data"
 
     user_state["assignments"]       = new_assignments
     user_state["domain"]            = domain
@@ -473,7 +512,7 @@ class ProposeKpisRequest(BaseModel):
 @router.post("/propose_kpis")
 async def propose_kpis_endpoint(payload: ProposeKpisRequest, twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = get_user_state(db, twin_id)
+    user_state = get_user_state(db, twin_id, user_id)
 
     from agents.kpi_agent import propose_kpis
     kpis = await propose_kpis(payload.domain, payload.columns, payload.components)
@@ -482,7 +521,7 @@ async def propose_kpis_endpoint(payload: ProposeKpisRequest, twin_id: str, db: S
 @router.get("/status")
 def get_status(twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = get_user_state(db, twin_id)
+    user_state = get_user_state(db, twin_id, user_id)
 
     global _active_connectors
     if len(user_state["columns"]) == 0 and user_state.get("telemetry_table"):
@@ -508,7 +547,7 @@ def get_status(twin_id: str, db: Session = Depends(get_db), current_user: UserDB
 @router.delete("")
 def disconnect_source(twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
-    user_state = get_user_state(db, twin_id)
+    user_state = get_user_state(db, twin_id, user_id)
 
     global _active_connectors
     if _active_connectors.get(twin_id):

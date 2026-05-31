@@ -51,6 +51,12 @@ class BaseConnector(ABC):
     name: str = "base"
     enabled: bool = True
 
+    @staticmethod
+    def is_safe_identifier(name: str) -> bool:
+        """Ensure an identifier only contains alphanumeric chars and underscores."""
+        import re
+        return bool(name and re.match(r"^[a-zA-Z0-9_]+$", name))
+
     def __init__(self, config: dict):
         self.config = config
         self._running = False

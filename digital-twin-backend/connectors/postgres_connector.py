@@ -103,15 +103,24 @@ class PostgresConnector(BaseConnector):
                 components_needed = set(kpi.get('component_id') for kpi in self.assignments.values() if kpi.get('component_id'))
                 
                 for comp_id in components_needed:
-                    query = f"SELECT * FROM {table_name} WHERE {self.component_id_col} = %s"
+                    from psycopg2 import sql
+                    
+                    query = sql.SQL("SELECT * FROM {table} WHERE {comp_col} = %s").format(
+                        table=sql.Identifier(table_name or "factory_data"),
+                        comp_col=sql.Identifier(self.component_id_col or "component_id")
+                    )
                     params = [comp_id]
                     
                     last_ts = self.last_timestamps.get(comp_id)
                     if last_ts:
-                        query += f" AND {self.timestamp_col} > %s"
+                        query += sql.SQL(" AND {ts_col} > %s").format(
+                            ts_col=sql.Identifier(self.timestamp_col or "timestamp")
+                        )
                         params.append(last_ts)
                         
-                    query += f" ORDER BY {self.timestamp_col} DESC LIMIT 1"
+                    query += sql.SQL(" ORDER BY {ts_col} DESC LIMIT 1").format(
+                        ts_col=sql.Identifier(self.timestamp_col or "timestamp")
+                    )
                     
                     cursor.execute(query, tuple(params))
                     row = cursor.fetchone()

@@ -101,8 +101,13 @@ def generate_random_data(table_name, component_id):
     
     # Apply small random drift/trends to each value
     for k, v in current.items():
+        # Prevent getting stuck at 0: reset to initial if too low
+        if v <= 0.01 and k != "forklift_battery":
+            current[k] = get_initial_state(table_name, component_id).get(k, 10.0)
+            continue
+
         # Random walk with slight upward bias occasionally, or just noise
-        drift = random.uniform(-0.02, 0.025) * v  # +/- 2% change max per tick
+        drift = random.uniform(-0.02, 0.025) * max(v, 1.0)  # max(v, 1.0) avoids zero multiplication
         
         # specific hard caps depending on field to prevent absurd values
         if "rate" in k or k == "quality_score":
@@ -110,7 +115,10 @@ def generate_random_data(table_name, component_id):
         elif k == "passenger_count" or k == "inventory_level":
             current[k] = max(0, int(v + drift * 10))
         elif k == "forklift_battery":
-            current[k] = max(0.0, min(100.0, v - random.uniform(0.1, 0.5))) # Battery drains
+            if v <= 5.0:
+                current[k] = 100.0 # Recharge automatically
+            else:
+                current[k] = max(0.0, min(100.0, v - random.uniform(0.1, 0.5))) # Battery drains
         else:
             current[k] = max(0.0, v + drift)
             

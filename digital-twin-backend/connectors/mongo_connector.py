@@ -17,6 +17,11 @@ class MongoConnector(BaseConnector):
         self.collection_name = config.get("table_name") # re-use table_name as collection_name
         self.timestamp_col = config.get("timestamp_col", "timestamp")
         self.component_id_col = config.get("component_id_col", "component_id")
+
+        for ident in [self.collection_name, self.timestamp_col, self.component_id_col]:
+            if not self.is_safe_identifier(str(ident)):
+                raise ValueError(f"Invalid or unsafe identifier detected: {ident}")
+
         self._last_ts = None
         self._client = None
 

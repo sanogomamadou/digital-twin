@@ -105,63 +105,68 @@ def get_recent_values(kpi_name: str, component_id: Optional[str] = None, limit: 
         return json.dumps({"error": str(e)})
 
 @tool
-def analyze_with_pandas(script: str) -> str:
+def get_kpi_trend_over_time(kpi_name: str, interval: str = "1H", component_id: Optional[str] = None) -> str:
     """
-    Execute a custom Python script using Pandas to analyze data.
-    The environment contains a pandas DataFrame named `df` populated with the current KPI records.
-    The DataFrame columns are: 'timestamp', 'value', 'kpi_name', 'component_id'.
-    The script MUST print its result to stdout using `print()`. 
-    Example: `print(df.groupby('kpi_name')['value'].mean().to_json())`
+    Get the trend of a KPI over time by grouping data into intervals (e.g. '1H', '6H', '1D').
+    Returns JSON string with aggregated values (mean, max, min) per interval.
+    Optionally filters by component_id.
     """
     import pandas as pd
-    import sys
-    import io
-    import textwrap
-    
     try:
         records = current_records_var.get()
-        data = [
-            {
-                "timestamp": getattr(r, "timestamp", None), 
-                "value": getattr(r, "value", 0), 
-                "kpi_name": getattr(r, "kpi_name", ""),
-                "component_id": getattr(r, "component_id", "")
-            }
+        filtered = [
+            {"timestamp": getattr(r, "timestamp", None), "value": getattr(r, "value", 0)}
             for r in records
+            if getattr(r, "kpi_name", "") == kpi_name and (component_id is None or getattr(r, "component_id", "") == component_id)
         ]
-        if not data:
-            return "Error: No data available in context."
-            
-        df = pd.DataFrame(data)
+        if not filtered:
+            return json.dumps({"error": f"No data found for KPI '{kpi_name}'"})
         
-        # Capture stdout
-        old_stdout = sys.stdout
-        new_stdout = io.StringIO()
-        sys.stdout = new_stdout
+        df = pd.DataFrame(filtered)
+        if df.empty or "timestamp" not in df.columns:
+            return "[]"
         
-        # Clean script
-        clean_script = textwrap.dedent(script).strip()
-        if clean_script.startswith("```python"):
-            clean_script = clean_script[9:]
-            if clean_script.endswith("```"):
-                clean_script = clean_script[:-3]
-        clean_script = clean_script.strip()
-        
-        # Execute in sandboxed namespace
-        local_env = {"df": df, "pd": pd, "json": json}
-        try:
-            exec(clean_script, {}, local_env)
-            output = new_stdout.getvalue()
-            if not output:
-                return "Script executed successfully but produced no output. Did you forget to use print()?"
-            return output.strip()
-        finally:
-            sys.stdout = old_stdout
-            
+        df["timestamp"] = pd.to_datetime(df["timestamp"])
+        df.set_index("timestamp", inplace=True)
+        # Resample and aggregate
+        agg_df = df.resample(interval).agg({"value": ["mean", "max", "min"]}).dropna()
+        agg_df.columns = ["mean", "max", "min"]
+        agg_df.reset_index(inplace=True)
+        # Convert timestamp back to string
+        agg_df["timestamp"] = agg_df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S")
+        return agg_df.to_json(orient="records")
     except Exception as e:
-        if 'old_stdout' in locals():
-            sys.stdout = old_stdout
-        return f"Error executing Pandas script: {str(e)}"
+        return json.dumps({"error": str(e)})
+
+@tool
+def compare_kpi_across_components(kpi_name: str) -> str:
+    """
+    Compare a specific KPI across all different components (machines, gates, etc).
+    Returns JSON string with the average and max values for each component.
+    """
+    import pandas as pd
+    try:
+        records = current_records_var.get()
+        filtered = [
+            {"component_id": getattr(r, "component_id", "unknown"), "value": getattr(r, "value", 0)}
+            for r in records
+            if getattr(r, "kpi_name", "") == kpi_name
+        ]
+        if not filtered:
+            return json.dumps({"error": f"No data found for KPI '{kpi_name}'"})
+        
+        df = pd.DataFrame(filtered)
+        if df.empty:
+            return "[]"
+        
+        agg_df = df.groupby("component_id").agg({"value": ["mean", "max"]}).reset_index()
+        agg_df.columns = ["component_id", "mean", "max"]
+        # Round the values
+        agg_df["mean"] = agg_df["mean"].round(2)
+        agg_df["max"] = agg_df["max"].round(2)
+        return agg_df.to_json(orient="records")
+    except Exception as e:
+        return json.dumps({"error": str(e)})
 
 @tool
 def search_documentation(query: str) -> str:

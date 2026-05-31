@@ -114,8 +114,9 @@ export async function selectTelemetryTable(twinId, tableName) {
     });
 }
 
-export async function getTelemetrySchema(twinId) {
-    return apiFetch(`/source/schema?twin_id=${twinId}`);
+export async function getTelemetrySchema(twinId, domain) {
+    const query = domain ? `?twin_id=${twinId}&domain=${domain}` : `?twin_id=${twinId}`;
+    return apiFetch(`/source/schema${query}`);
 }
 
 export async function saveTelemetryAssignments(twinId, domain, assignments) {

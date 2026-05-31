@@ -27,6 +27,14 @@ def delete_twin(db: Session, user_id: int, twin_id: str) -> bool:
     twin = db.query(LayoutStateDB).filter(LayoutStateDB.id == twin_id, LayoutStateDB.user_id == user_id).first()
     if not twin:
         return False
+        
+    from db.database import ShareLinkDB
+    
+    # Cascade deletions
+    db.query(ShareLinkDB).filter(ShareLinkDB.twin_id == twin_id).delete(synchronize_session=False)
+    db.query(UserConfigurationDB).filter(UserConfigurationDB.twin_id == twin_id).delete(synchronize_session=False)
+    db.query(KpiDataDB).filter(KpiDataDB.twin_id == twin_id).delete(synchronize_session=False)
+    
     db.delete(twin)
     db.commit()
     return True

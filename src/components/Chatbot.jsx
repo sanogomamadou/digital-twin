@@ -2,13 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { nlqQuery, getQuerySuggestions, checkBackendHealth } from '../services/api';
 import DynamicChart from './DynamicChart';
 import useTwinStore from '../store/useTwinStore';
-import { Bot } from 'lucide-react';
+import { Bot, PlusCircle } from 'lucide-react';
 
 export default function Chatbot() {
-  const { kpis, components, selectedComponentId, selectedDomain, activeTwinId } = useTwinStore();
-  const [messages, setMessages] = useState([
-    { id: 0, role: 'assistant', text: '✨ Welcome to your **Analytics AI**!\n\nI\'m here to turn your KPI data into actionable insights. Ask me anything, and I\'ll generate beautiful charts on the fly.', chart: null },
-  ]);
+  const { kpis, components, selectedComponentId, selectedDomain, activeTwinId, nlqMessages: messages, setNlqMessages: setMessages, clearNlqMessages } = useTwinStore();
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
@@ -117,14 +114,23 @@ export default function Chatbot() {
               {selComp ? `Focused on: ${selComp.name}` : 'Analyzing all components'}
             </div>
           </div>
-          {/* KPI badge row */}
-          <div style={{ display: 'flex', gap: '4px' }}>
+          {/* KPI badge row & New Chat */}
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
             {[['#10d98d', okCount, 'OK'], ['#f59e0b', warnCount, '⚠'], ['#ef4444', critCount, '🚨']].map(([c, n, l]) => (
               <div key={l} style={{ padding: '2px 6px', borderRadius: '5px', background: `${c}18`, border: `1px solid ${c}30`, textAlign: 'center' }}>
                 <div style={{ fontSize: '12px', fontWeight: 800, color: c, lineHeight: 1 }}>{n}</div>
                 <div style={{ fontSize: '8px', color: 'var(--text-2)' }}>{l}</div>
               </div>
             ))}
+            <button 
+              onClick={clearNlqMessages}
+              title="Nouvelle discussion"
+              style={{ padding: '6px', marginLeft: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-1)', transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-1)'; e.currentTarget.style.color = 'var(--text-0)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-0)'; e.currentTarget.style.color = 'var(--text-1)' }}
+            >
+              <PlusCircle size={14} />
+            </button>
           </div>
         </div>
 

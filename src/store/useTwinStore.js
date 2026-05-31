@@ -196,6 +196,18 @@ const useTwinStore = create((set, get) => ({
         { id: 0, role: 'assistant', text: '👋 Hello! I\'m your Analytics AI powered by Groq.\n\nConnect your data source first (🔌 Source tab), then ask me anything about your KPIs.' }
     ],
 
+    nlqMessages: [
+        { id: 0, role: 'assistant', text: '✨ Welcome to your **Analytics AI**!\n\nI\'m here to turn your KPI data into actionable insights. Ask me anything, and I\'ll generate beautiful charts on the fly.', chart: null }
+    ],
+    setNlqMessages: (updater) => set(s => ({
+        nlqMessages: typeof updater === 'function' ? updater(s.nlqMessages) : updater
+    })),
+    clearNlqMessages: () => set({
+        nlqMessages: [
+            { id: 0, role: 'assistant', text: '✨ Welcome to your **Analytics AI**!\n\nI\'m here to turn your KPI data into actionable insights. Ask me anything, and I\'ll generate beautiful charts on the fly.', chart: null }
+        ]
+    }),
+
     setStep: (step) => set(s => ({
         currentStep: step,
         selectedComponentId: s.currentStep !== step ? null : s.selectedComponentId

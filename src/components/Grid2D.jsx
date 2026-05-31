@@ -234,7 +234,7 @@ export default function Grid2D() {
                                             </div>
                                             {/* Name */}
                                             <span style={{ fontSize: '8px', fontWeight: 600, color: isSelected ? '#4865f2' : '#94a3c8', textAlign: 'center', lineHeight: 1.1, padding: '0 2px' }}>
-                                                {comp.name.split(' ').slice(0, -1).join(' ')}
+                                                {comp.name.replace(/\s+\d+$/, '')}
                                             </span>
                                             {/* KPI value */}
                                             {kpi && (

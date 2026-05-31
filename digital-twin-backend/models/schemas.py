@@ -187,6 +187,7 @@ class ChartConfig(BaseModel):
     gradient: bool = True
 
 class ReportRequest(BaseModel):
+    twin_id: str = "default"
     domain: str
     kpis: list[dict]
     components: list[dict] = []

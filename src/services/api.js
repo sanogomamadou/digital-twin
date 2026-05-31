@@ -222,6 +222,13 @@ export async function getQuerySuggestions(twinId, domain) {
     return apiFetch(`/analytics/suggestions${query ? query + '&' : '?'}twin_id=${twinId}`);
 }
 
+export async function generateReport(data) {
+    return apiFetch('/analytics/report', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    });
+}
+
 // ─── Twins CRUD API ───────────────────────────────────────────────────────────
 
 export async function listTwins() {

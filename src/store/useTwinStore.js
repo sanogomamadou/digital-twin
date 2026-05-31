@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { listTwins, getTwin, saveTwin as apiSaveTwin, deleteTwin as apiDeleteTwin, listShareLinks, createShareLink, updateShareLink, deleteShareLink } from '../services/api';
+import { listTwins, getTwin, saveTwin as apiSaveTwin, deleteTwin as apiDeleteTwin, listShareLinks, createShareLink, updateShareLink, deleteShareLink, generateReport } from '../services/api';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -536,7 +536,7 @@ const useTwinStore = create((set, get) => ({
     },
 
     exportDigitalTwin: async ({ exportJson, export3D, exportPdf } = { exportJson: true, export3D: true, exportPdf: false }) => {
-        const { threeSceneRef, twinName, selectedDomain, components, kpis, connections } = get();
+        const { threeSceneRef, twinName, selectedDomain, components, kpis, connections, activeTwinId } = get();
         if (export3D && !threeSceneRef) throw new Error("3D Scene not ready.");
 
         // 1. Gather Data Snapshot
@@ -573,12 +573,7 @@ const useTwinStore = create((set, get) => ({
         // 3. Export PDF
         if (exportPdf) {
             try {
-                const response = await fetch('http://localhost:8000/analytics/report', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dataSnapshot)
-                });
-                const resData = await response.json();
+                const resData = await generateReport(dataSnapshot);
                 const aiReport = resData.report || "Analyse IA non disponible.";
 
                 const doc = new jsPDF();

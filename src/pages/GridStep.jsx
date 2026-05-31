@@ -62,11 +62,13 @@ export default function GridStep() {
       result.newState.components.forEach(comp => {
         const existing = components.find(c => c.id === comp.id);
         if (!existing) {
+          const isStandard = blueprints.some(b => b.type === comp.type);
           // Pass ALL extra fields for custom components
           store.addComponent(comp.type, {
             row: comp.row, col: comp.col,
-            name: comp.name, color: comp.color,
-            gridSize: comp.gridSize,
+            name: isStandard ? undefined : comp.name, 
+            color: isStandard ? undefined : comp.color,
+            gridSize: isStandard ? undefined : comp.gridSize,
             isCustom: comp.isCustom || false,
             icon: comp.icon || '',
             description: comp.description || '',

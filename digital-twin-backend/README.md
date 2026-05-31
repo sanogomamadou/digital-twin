@@ -72,3 +72,26 @@ Le système de streaming (`routers/data_source.py` & `/connectors/`) gère le cy
     python main.py
     ```
 6.  Accédez à la documentation automatique de l'API à l'adresse : `http://localhost:8000/docs`.
+
+---
+
+## 🧪 Tests et Génération de Données (PostgreSQL)
+
+Pour tester la plateforme avec un flux de données réaliste, un environnement de test local est inclus avec Docker.
+
+### 1. Lancer le conteneur PostgreSQL de Télémétrie
+À la racine du dossier backend, lancez le docker-compose :
+```bash
+docker-compose up -d
+```
+Cela lancera une base de données sur le port `5433` spécifiquement dédiée aux tests de télémétrie.
+
+### 2. Générer les Données
+Utilisez le script de génération pour remplir la base avec des tables spécifiques au domaine testé (`factory_data`, `warehouse_data`, ou `airport_data`) :
+```bash
+python generate_pg_data.py --domain factory
+```
+*(Remplacez `factory` par `warehouse` ou `airport` selon le jumeau que vous configurez dans l'interface).*
+
+Lors de la configuration de votre Jumeau sur l'interface UI, connectez-vous avec l'URL :
+`postgresql://postgres:postgrespassword@localhost:5433/telemetry_db` et indiquez la table correspondante.

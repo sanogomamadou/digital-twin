@@ -102,3 +102,26 @@ npm install
 npm run dev
 ```
 Le frontend sera accessible sur `http://localhost:5173`. L'application est alors prête à être utilisée !
+
+---
+
+## 🧪 Tests et Génération de Données (PostgreSQL)
+
+Pour tester la plateforme avec un flux de données réaliste, un environnement de test local est inclus dans le dossier backend avec Docker.
+
+### 1. Lancer le conteneur PostgreSQL de Télémétrie
+Ouvrez un terminal dans `digital-twin-backend` et lancez le docker-compose :
+```bash
+docker-compose up -d
+```
+Cela lancera une base de données sur le port `5433` spécifiquement dédiée aux tests de télémétrie.
+
+### 2. Générer les Données
+Utilisez le script de génération pour remplir la base avec des tables spécifiques au domaine testé (`factory_data`, `warehouse_data`, ou `airport_data`) :
+```bash
+python generate_pg_data.py --domain factory
+```
+*(Remplacez `factory` par `warehouse` ou `airport` selon le jumeau que vous configurez dans l'interface).*
+
+Lors de la configuration de votre Jumeau sur l'interface UI, connectez-vous avec l'URL :
+`postgresql://postgres:postgrespassword@localhost:5433/telemetry_db` et indiquez la table correspondante.

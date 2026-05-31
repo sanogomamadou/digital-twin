@@ -790,6 +790,7 @@ const useTwinStore = create((set, get) => ({
             set(s => ({
                 twins: s.twins.filter(t => t.id !== twinId),
                 activeTwinId: s.activeTwinId === twinId ? null : s.activeTwinId,
+                shareLinks: s.shareLinks.filter(link => link.twin_id !== twinId),
             }));
         } catch (e) {
             console.error('Failed to delete twin:', e.message);

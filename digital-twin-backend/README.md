@@ -1,174 +1,74 @@
-# 🤖 Digital Twin Backend — FastAPI + LangGraph + Groq
+# Backend du Digital Twin Intelligent (FastAPI & IA)
 
-Python backend powering the Digital Twin Platform with:
-- **LLM-driven layout editing** via natural language prompts (Groq API)
-- **KPI data import** — CSV/Excel with auto column detection
-- **NLQ analytics** — ask questions, get answers + dynamic charts
-- **Agent architecture** — LangGraph agents for each feature
+Bienvenue dans le dépôt du **Backend du Jumeau Numérique**. Ce projet est le "cerveau" de l'application, développé en Python avec **FastAPI**, chargé de la modélisation des données, de l'orchestration des connecteurs de télémétrie, et de la résolution complexe via un écosystème d'Agents d'Intelligence Artificielle.
 
-## 🚀 Quick Start
+## 🛠️ Stack Technologique
 
-### 1. Get Groq API Key
-
-```bash
-# Get your API key from https://console.groq.com
-# You'll need to set it in the .env file later
-```
-
-### 2. Setup Python environment
-
-```bash
-cd digital-twin-backend
-
-# Create virtual environment
-python -m venv venv
-
-# Activate (Windows)
-.\venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 3. Configure environment
-
-```bash
-# Configure the environment variables with your Groq API key
-cat .env
-```
-
-### 4. Start backend
-
-```bash
-python main.py
-# or
-uvicorn main:app --reload --port 8000
-```
-
-### 5. Start frontend (separate terminal)
-
-```bash
-cd ../digital-twin-ui
-npm run dev
-```
-
-Open http://localhost:5173 — backend status shows as **"● Backend: Groq online"**
+- **Framework Web** : FastAPI (Asynchrone, rapide, et auto-documenté via Swagger/OpenAPI).
+- **Base de Données & ORM** : SQLAlchemy (SQLite/PostgreSQL) pour les métadonnées et la configuration multi-tenant.
+- **Orchestration d'IA** : LangChain & LangGraph pour le routage cognitif et le "Tool Calling".
+- **Modèle de Langage (LLM)** : Groq API (pour une latence d'inférence ultra-faible) ou un système "Mock" de repli pour le développement local.
+- **Temps Réel** : WebSockets (Starlette) pour le streaming haute fréquence de la télémétrie vers le client.
+- **Connecteurs Télémétriques** : Intégrations prêtes pour PostgreSQL, MongoDB, Cassandra, et Databricks.
 
 ---
 
-## 📚 API Documentation
+## 🧠 Architecture et Orchestration IA (LangGraph)
 
-Once running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+L'intelligence du backend repose sur un paradigme de **ReAct** (Reasoning and Acting) orchestré par LangGraph.
+Plutôt que d'avoir un LLM statique, le backend héberge plusieurs agents qui possèdent des "Outils" (Tools Python) leur permettant de réfléchir, de lire la base de données, et de calculer des statistiques en temps réel.
 
----
-
-## 🤖 Agents
-
-### Layout Agent (`agents/layout_agent.py`)
-**Prompt → Layout Actions**
-
-```bash
-POST /layout/prompt
-{
-  "prompt": "Add 2 conveyor belts next to the shipping dock",
-  "currentState": { ... }
-}
-# → { "actions": [...], "explanation": "...", "newState": { ... } }
-```
-
-### NLQ Analytics Agent (`agents/nlq_agent.py`)
-**Question → Answer + Chart**
-
-```bash
-POST /analytics/query
-{
-  "question": "Show me the temperature trend for the last 24h",
-  "timeRange": "24h"
-}
-# → { "answer": "...", "chart": { "chartType": "AreaChart", ... }, "rawData": [...] }
-```
-
-### Chart Agent (`agents/chart_agent.py`)
-**Data + Prompt → Best Chart Config**
-
-```bash
-POST /analytics/chart
-{
-  "prompt": "Compare production throughput across all stations",
-  "data": [...]
-}
-# → { "chartType": "BarChart", "series": [...], ... }
-```
+### Le Processus NLQ (Natural Language Query)
+1.  **Entrée** : L'utilisateur pose une question dans le chat (ex: "Quelle machine consomme le plus d'énergie ?").
+2.  **Routage (`graph_orchestrator.py`)** : LangGraph initialise l'état cognitif et transmet la question à l'Agent Principal (`NLQ Agent`).
+3.  **Appel d'outils (`tools.py`)** : L'Agent Principal n'invente pas la réponse. Il appelle dynamiquement les outils à sa disposition :
+    - `get_kpi_list` : Découvre les KPIs disponibles.
+    - `get_kpi_statistics` : Calcule la moyenne, le min, le max et l'écart-type.
+    - `compare_kpi_across_components` : Agrège les données par composant.
+    - `get_kpi_trend_over_time` : Évalue l'évolution temporelle.
+    - `detect_kpi_anomalies` : Identifie les pics mathématiques basés sur le Z-score.
+4.  **Synthèse** : Une fois les données récoltées, l'agent génère une réponse textuelle et ordonne la création d'un graphique pertinent.
+5.  **Chart Agent** : Le `Chart Agent` prend le relais, génère une configuration JSON de graphique structurée (`Recharts`), et la renvoie au frontend.
 
 ---
 
-## 📥 KPI Data Import
+## 🔒 Sécurité & Hardening (SaaS Multi-Tenant)
 
-```bash
-POST /kpis/import
-Content-Type: multipart/form-data
+Ce backend a été conçu pour supporter un environnement SaaS de production, où les données de multiples entreprises transitent.
 
-file=@data.csv
-component_id=cnc_machine_1
-kpi_name=Machine Temperature
-unit=°C
-```
+### 1. Véritable Multi-Tenancy (Isolation DB)
+*   Toutes les opérations CRUD (lecture, sauvegarde, mise à jour) sont filtrées au niveau de la requête SQL par `user_id` et `twin_id`.
+*   Il est mathématiquement impossible pour un utilisateur A d'accéder, même par ingénierie inverse, à la configuration d'un utilisateur B.
 
-**Supported formats:** `.csv`, `.xlsx`, `.xls`
+### 2. Sécurité Applicative (SSRF / Réseau)
+*   L'Assistant de Connexion de données empêche formellement le **Server-Side Request Forgery (SSRF)**.
+*   Les hôtes réseau (`localhost`, `127.0.0.1`, `0.0.0.0`, `169.254.x.x`) sont bloqués pour prévenir l'accès aux ressources internes du serveur hébergeant le backend.
+*   Protection de l'Event Loop : Limitation drastique de la durée de vie des requêtes SQL (`connect_timeout=3`) afin d'éviter les attaques par épuisement de ressources (Threadpool starvation).
 
-**Auto-detects:** timestamp column, value column, unit column
-
----
-
-## 🗄️ Database
-
-PostgreSQL database.
-
-Tables:
-- `layout_states` — saved 2D/3D layouts
-- `kpi_data` — all imported + real-time KPI readings
-- `query_history` — all NLQ queries with answers + chart configs
+### 3. Exécution IA Sandboxée
+*   L'évaluation dynamique du code (ex: `eval()`, exécution arbitraire de scripts Pandas via LLM) a été **complètement bannie**.
+*   Les agents LLM interagissent avec la donnée uniquement au travers de fonctions déterministes et typées (`@tool`), évitant tout risque d'injection de code dans l'environnement Python.
 
 ---
 
-## 🔧 LLM Configuration
+## 🗄️ Connecteurs de Télémétrie Asynchrones
 
-In `.env`:
-
-```env
-# ── LLM — Groq API ──────────────────────────────────────────────────
-GROQ_API_KEY=gsk_...
-GROQ_MODEL=llama-3.3-70b-versatile
-```
-
-> **Mock Mode**: If Groq API is not available, the backend automatically falls back to intelligent rule-based responses — the app still works perfectly for demos.
+Le système de streaming (`routers/data_source.py` & `/connectors/`) gère le cycle de vie de la donnée :
+1.  **Démarrage** : Lorsqu'un utilisateur configure un jumeau, un thread démon de connecteur est lancé.
+2.  **Polling** : Le connecteur récupère les données brutes (ou en génère par simulation si le connecteur est un mock ou un postgres de test) depuis la base distante.
+3.  **Évaluation Mathématique** : Les données ingérées sont passées à travers un évaluateur de formules AST strict pour transformer des champs natifs en KPIs complexes (ex: `defect_rate / (timestamp + 0.1)`).
+4.  **Diffusion WebSocket** : Les KPIs sont formatés puis "push" vers les clients abonnés au WebSocket en moins de 100 millisecondes.
 
 ---
 
-## 📁 Structure
+## 🚀 Lancement Local
 
-```
-digital-twin-backend/
-├── main.py                  ← FastAPI app entry point
-├── requirements.txt
-├── .env                     ← your config (gitignored)
-├── .env.example
-├── agents/
-│   ├── layout_agent.py      ← NL → layout actions (LangGraph)
-│   ├── nlq_agent.py         ← NLQ → answer + chart (LangGraph)
-│   └── chart_agent.py       ← data → chart config
-├── routers/
-│   ├── layout.py
-│   ├── kpis.py
-│   └── analytics.py
-├── models/
-│   └── schemas.py           ← Pydantic v2 schemas
-├── db/
-│   ├── database.py          ← SQLAlchemy setup
-│   └── crud.py              ← DB operations
-├── services/
-│   ├── llm_service.py         ← Groq LLM wrapper
-│   └── data_service.py      ← Pandas data processing
-```
+1.  Assurez-vous que Python 3.10 ou supérieur est installé.
+2.  Installez les dépendances : `pip install -r requirements.txt`.
+3.  Configurez vos variables d'environnement (`cp .env.example .env`).
+4.  Optionnel mais recommandé : Modifiez la base de données vers PostgreSQL si vous souhaitez une persistance robuste. Par défaut, SQLite est utilisé pour la simplicité de développement.
+5.  Démarrez le serveur avec rechargement à chaud (Hot Reload) :
+    ```bash
+    python main.py
+    ```
+6.  Accédez à la documentation automatique de l'API à l'adresse : `http://localhost:8000/docs`.

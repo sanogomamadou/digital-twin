@@ -20,7 +20,7 @@ Le projet suit une architecture moderne, séparant clairement la présentation v
 
 *   **Frontend (`/`)** : Une Single Page Application développée en **React** et **Vite**, utilisant **Three.js / React Three Fiber** pour le rendu 3D. Le frontend intègre un assistant de configuration (Wizard) étape par étape (Connexion, Typage, KPIs, 3D Layout) et un tableau de bord en temps réel.
 *   **Backend (`/digital-twin-backend`)** : Une API robuste en **Python (FastAPI)** qui gère l'état des jumeaux, orchestre les flux de télémétrie asynchrones, expose les WebSockets pour le temps réel, et héberge les agents LLM basés sur **LangChain/LangGraph**.
-*   **Base de Données** : Utilisation de **SQLite/PostgreSQL** (via SQLAlchemy) pour la persistance des configurations, de l'état des jumeaux, et de l'historique des requêtes IA.
+*   **Base de Données** : Utilisation de **PostgreSQL** (via SQLAlchemy) pour la persistance des configurations, de l'état des jumeaux, et de l'historique des requêtes IA.
 
 ---
 

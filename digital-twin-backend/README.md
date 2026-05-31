@@ -5,7 +5,7 @@ Bienvenue dans le dépôt du **Backend du Jumeau Numérique**. Ce projet est le 
 ## 🛠️ Stack Technologique
 
 - **Framework Web** : FastAPI (Asynchrone, rapide, et auto-documenté via Swagger/OpenAPI).
-- **Base de Données & ORM** : SQLAlchemy (SQLite/PostgreSQL) pour les métadonnées et la configuration multi-tenant.
+- **Base de Données & ORM** : SQLAlchemy (PostgreSQL) pour les métadonnées et la configuration multi-tenant.
 - **Orchestration d'IA** : LangChain & LangGraph pour le routage cognitif et le "Tool Calling".
 - **Modèle de Langage (LLM)** : Groq API (pour une latence d'inférence ultra-faible) ou un système "Mock" de repli pour le développement local.
 - **Temps Réel** : WebSockets (Starlette) pour le streaming haute fréquence de la télémétrie vers le client.
@@ -66,7 +66,7 @@ Le système de streaming (`routers/data_source.py` & `/connectors/`) gère le cy
 1.  Assurez-vous que Python 3.10 ou supérieur est installé.
 2.  Installez les dépendances : `pip install -r requirements.txt`.
 3.  Configurez vos variables d'environnement (`cp .env.example .env`).
-4.  Optionnel mais recommandé : Modifiez la base de données vers PostgreSQL si vous souhaitez une persistance robuste. Par défaut, SQLite est utilisé pour la simplicité de développement.
+4.  Assurez-vous que votre base de données PostgreSQL est lancée et accessible via l'URL spécifiée dans `DATABASE_URL`.
 5.  Démarrez le serveur avec rechargement à chaud (Hot Reload) :
     ```bash
     python main.py

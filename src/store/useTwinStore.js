@@ -193,7 +193,7 @@ const useTwinStore = create((set, get) => ({
     activePanel: 'kpi',  // 'kpi' | 'charts' | 'chat'
 
     chatMessages: [
-        { id: 0, role: 'assistant', text: '👋 Hello! I\'m your Analytics AI powered by Llama 3.\n\nConnect your data source first (🔌 Source tab), then ask me anything about your KPIs.' }
+        { id: 0, role: 'assistant', text: '👋 Hello! I\'m your Analytics AI powered by Groq.\n\nConnect your data source first (🔌 Source tab), then ask me anything about your KPIs.' }
     ],
 
     setStep: (step) => set(s => ({
@@ -430,7 +430,7 @@ const useTwinStore = create((set, get) => ({
     clearKpis: () => {
         set(s => {
             const newComponents = s.components.map(c => ({ ...c, kpiIds: [] }));
-            return { kpis: [], kpiAssignments: [], kpiHistory: [], components: newComponents };
+            return { kpis: [], kpiHistory: [], components: newComponents };
         });
     },
 

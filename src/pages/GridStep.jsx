@@ -92,7 +92,7 @@ export default function GridStep() {
       });
       setAiPrompt('');
     } catch (e) {
-      // Fallback: basic local parsing for palette types only
+      // Fallback: basic offline parsing for palette types only
       const p = aiPrompt.toLowerCase();
       blueprints.forEach(bp => {
         if (p.includes(bp.type.replace('_', ' ')) || p.includes(bp.name.toLowerCase())) {
@@ -100,7 +100,7 @@ export default function GridStep() {
           for (let i = 0; i < Math.min(count, 4); i++) handleAdd(bp.type);
         }
       });
-      setAiResult({ explanation: `Backend offline — local parsing applied.`, actionsCount: 0, error: true });
+      setAiResult({ explanation: `Backend offline — offline parsing applied.`, actionsCount: 0, error: true });
     } finally {
       setAiLoading(false);
     }
@@ -140,8 +140,8 @@ export default function GridStep() {
           background: showAiBar ? 'rgba(72,101,242,0.15)' : 'transparent',
           color: showAiBar ? 'var(--accent)' : 'var(--text-2)' }}>
           <Bot size={14} /> AI Layout
-          <span style={{ fontSize: '8px', padding: '1px 4px', borderRadius: '4px', background: backendOnline ? 'rgba(16,217,141,0.2)' : 'rgba(245,158,11,0.2)', color: backendOnline ? '#10d98d' : '#f59e0b' }}>
-            {backendOnline ? 'live' : 'mock'}
+          <span style={{ fontSize: '8px', padding: '1px 4px', borderRadius: '4px', background: backendOnline === true ? 'rgba(16,217,141,0.2)' : 'rgba(245,158,11,0.2)', color: backendOnline === true ? '#10d98d' : '#f59e0b' }}>
+            {backendOnline === true ? 'live' : 'mock'}
           </span>
         </button>
 

@@ -120,6 +120,14 @@ def verify_share_link(share_id: str, verify_data: ShareLinkVerify, response: Res
         
     schema = layout_db_to_schema(db_layout)
     
+    # Ensure the background data connector is running for this twin
+    try:
+        from routers.data_source import apply_assignments_sync
+        if schema.kpiAssignments:
+            apply_assignments_sync(db_link.twin_id, db_link.user_id, schema.domain, schema.kpiAssignments)
+    except Exception as e:
+        print(f"Failed to sync KPIs on share load: {e}")
+    
     # Issue a read-only share token so the guest can connect to the WebSocket
     import jwt
     from routers.auth import SECRET_KEY, ALGORITHM

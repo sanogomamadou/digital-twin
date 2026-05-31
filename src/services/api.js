@@ -4,7 +4,7 @@
  * In production, set VITE_API_URL env var to backend URL.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import useAuthStore from '../store/useAuthStore';
 
 async function apiFetch(path, options = {}) {
@@ -277,9 +277,14 @@ export async function verifyShareLink(shareId, password) {
 
 export async function checkBackendHealth() {
     try {
-        const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(3000) });
-        return res.ok;
-    } catch {
-        return false;
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 3000);
+        const res = await fetch(`${BASE_URL}/health`, { signal: controller.signal });
+        clearTimeout(id);
+        if (res.ok) return true;
+        return `HTTP ${res.status}`;
+    } catch (e) {
+        console.error("Health check failed:", e);
+        return `Err: ${e.message}`;
     }
 }

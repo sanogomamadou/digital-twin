@@ -197,7 +197,7 @@ async def kpi_stream(
 @router.get("/stream/status")
 def stream_status():
     return {
-        "connected_clients": manager.client_count,
+        "connected_clients": manager.client_count(),
         "kpi_bus_size": KPI_BUS.qsize(),
         "latest_kpis": len(manager._latest),
         "latest_snapshot": [],

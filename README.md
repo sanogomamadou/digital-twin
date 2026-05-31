@@ -7,7 +7,7 @@
 [![Three.js](https://img.shields.io/badge/Three.js-0.183-black?logo=three.js)](https://threejs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![LangChain](https://img.shields.io/badge/LangChain-0.3-1C3C3C)](https://langchain.com)
-[![Ollama](https://img.shields.io/badge/LLM-Llama%203.2%20local-8A2BE2)](https://ollama.com)
+[![Groq](https://img.shields.io/badge/LLM-Groq%20API-f55036)](https://groq.com)
 [![SQLite](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite)](https://sqlite.org)
 
 ---
@@ -43,7 +43,7 @@ A **5-step wizard** that builds and then monitors your digital twin in real-time
 │  /analytics → LangChain NLQ + chart agents             │
 │  /layout    → LangGraph layout-editing agent           │
 │─────────────────────────────────────────────────────────│
-│  SQLite (SQLAlchemy)  │  Pandas  │  Ollama Llama 3.2   │
+│  SQLite (SQLAlchemy)  │  Pandas  │  Groq API           │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -71,11 +71,11 @@ A **5-step wizard** that builds and then monitors your digital twin in real-time
 - Per-component filtering — click any component to see only its KPIs
 - Alert bell showing critical KPI count
 
-### AI Analytics (Llama 3 via Ollama — runs locally, no cloud)
+### AI Analytics (Groq API)
 - **NLQ Chatbot**: ask questions like *"What is the average security wait time?"*
 - **Chart agent**: generates dynamic charts from prompts
 - **Layout agent**: *"Add a security zone between Gate 2 and Terminal 1"*
-- Falls back gracefully if Ollama is not running
+- Falls back gracefully if Groq API is not available
 
 ### Multi-Domain Support
 | Domain | Sample Components |
@@ -91,7 +91,7 @@ A **5-step wizard** that builds and then monitors your digital twin in real-time
 ### Prerequisites / Prérequis
 - **Python 3.11+** (Assurez-vous d'avoir ajouté Python au PATH sur Windows)
 - **Node.js 20+**
-- **[Ollama](https://ollama.com)** (pour les fonctionnalités d'IA locales) : `ollama pull llama3.2`
+- **Clé API Groq** (pour les fonctionnalités d'IA)
 
 ---
 
@@ -193,10 +193,10 @@ Dans le dossier `digital-twin-backend`, vous disposez de 3 scripts très utiles 
 Copy `digital-twin-backend/.env.example` → `.env` and configure:
 
 ```env
-# LLM (local — no API key needed with Ollama)
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2
-OPENAI_API_KEY=           # Optional: override with GPT-4o
+# LLM (Groq API)
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=llama-3.3-70b-versatile
+
 
 # Optional connectors
 MQTT_ENABLED=false
@@ -233,7 +233,7 @@ FRONTEND_URL=http://localhost:5173
 | Database | **SQLite** via SQLAlchemy 2.0 + aiosqlite |
 | Data | **Pandas** 2.2 + openpyxl |
 | AI/LLM | **LangChain** 0.3 + **LangGraph** 0.2 |
-| Local LLM | **Ollama** (Llama 3.2) |
+| LLM | **Groq API** |
 | HTTP | httpx (async REST polling) |
 | Validation | Pydantic 2.10 |
 
@@ -280,7 +280,7 @@ digital-twin-ui/           ← this repo
     │   ├── mqtt_connector.py      # IoT optional
     │   └── rest_connector.py      # REST optional
     ├── services/
-    │   ├── llm_service.py         # Ollama / OpenAI
+    │   ├── llm_service.py         # Groq API
     │   └── data_service.py        # Pandas helpers
     ├── db/                        # SQLAlchemy + SQLite
     └── sample_data/               # Ready-to-use CSV files

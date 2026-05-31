@@ -1,20 +1,18 @@
-# 🤖 Digital Twin Backend — FastAPI + LangGraph + Llama 3
+# 🤖 Digital Twin Backend — FastAPI + LangGraph + Groq
 
 Python backend powering the Digital Twin Platform with:
-- **LLM-driven layout editing** via natural language prompts (Llama 3 local)
+- **LLM-driven layout editing** via natural language prompts (Groq API)
 - **KPI data import** — CSV/Excel with auto column detection
 - **NLQ analytics** — ask questions, get answers + dynamic charts
 - **Agent architecture** — LangGraph agents for each feature
 
 ## 🚀 Quick Start
 
-### 1. Install Ollama + pull Llama 3
+### 1. Get Groq API Key
 
 ```bash
-# Download Ollama from https://ollama.com
-# Then pull the model:
-ollama pull llama3.2
-ollama serve        # starts on http://localhost:11434
+# Get your API key from https://console.groq.com
+# You'll need to set it in the .env file later
 ```
 
 ### 2. Setup Python environment
@@ -35,8 +33,7 @@ pip install -r requirements.txt
 ### 3. Configure environment
 
 ```bash
-# .env was already created from .env.example
-# Default config uses Ollama — no changes needed
+# Configure the environment variables with your Groq API key
 cat .env
 ```
 
@@ -55,7 +52,7 @@ cd ../digital-twin-ui
 npm run dev
 ```
 
-Open http://localhost:5173 — backend status shows as **"● Backend: Llama 3 online"**
+Open http://localhost:5173 — backend status shows as **"● Backend: Groq online"**
 
 ---
 
@@ -141,17 +138,12 @@ Tables:
 In `.env`:
 
 ```env
-# Use local Llama (default) — free, private
-USE_OLLAMA=true
-OLLAMA_MODEL=llama3.2
-
-# Or use OpenAI (optional)
-USE_OLLAMA=false
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
+# ── LLM — Groq API ──────────────────────────────────────────────────
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=llama-3.3-70b-versatile
 ```
 
-> **Mock Mode**: If Ollama is not running, the backend automatically falls back to intelligent rule-based responses — the app still works perfectly for demos.
+> **Mock Mode**: If Groq API is not available, the backend automatically falls back to intelligent rule-based responses — the app still works perfectly for demos.
 
 ---
 
@@ -176,7 +168,7 @@ digital-twin-backend/
 ├── db/
 │   ├── database.py          ← SQLAlchemy setup
 │   └── crud.py              ← DB operations
-└── services/
-    ├── llm_service.py       ← Ollama/OpenAI wrapper
-    └── data_service.py      ← Pandas data processing
+├── services/
+│   ├── llm_service.py         ← Groq LLM wrapper
+│   └── data_service.py      ← Pandas data processing
 ```

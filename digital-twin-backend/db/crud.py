@@ -113,7 +113,7 @@ def get_kpi_data(db: Session, twin_id: str, component_id: str | None = None, kpi
     q = db.query(KpiDataDB).filter(KpiDataDB.twin_id == twin_id)
     if component_id:
         q = q.filter(KpiDataDB.component_id == component_id)
-    if component_ids:
+    if component_ids is not None:
         q = q.filter(KpiDataDB.component_id.in_(component_ids))
     if kpi_name:
         q = q.filter(KpiDataDB.kpi_name == kpi_name)

@@ -170,7 +170,7 @@ def health():
     return {
         "status": "ok",
         "llm_ready": has_real_llm(),
-        "ws_clients": manager.client_count,
+        "ws_clients": manager.client_count(),
         "connectors": [c.name for c in _connectors if c._running],
     }
 

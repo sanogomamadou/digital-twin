@@ -30,13 +30,25 @@ async def nlq_query(
     try:
         user_id = current_user.id
         layout = crud.get_layout(db, user_id, request.twin_id)
-        records = crud.get_kpi_data(
-            db,
-            twin_id=request.twin_id,
-            component_id=request.component_id,
-            
-            limit=2000,
-        )
+        valid_component_ids = None
+        if layout and layout.components_json:
+            try:
+                comps = json.loads(layout.components_json)
+                valid_component_ids = [c["id"] for c in comps]
+            except Exception:
+                pass
+                
+        # Ensure we don't query if there are no valid components in the layout
+        if valid_component_ids is not None and len(valid_component_ids) == 0:
+            records = []
+        else:
+            records = crud.get_kpi_data(
+                db,
+                twin_id=request.twin_id,
+                component_id=request.component_id,
+                component_ids=valid_component_ids,
+                limit=2000,
+            )
         
         # Detach records from database session to prevent DetachedInstanceError in async generator
         from types import SimpleNamespace
@@ -100,7 +112,25 @@ async def generate_report(
     try:
         user_id = current_user.id
         layout = crud.get_layout(db, user_id, request.twin_id)
-        records = crud.get_kpi_data(db, twin_id=request.twin_id,  limit=5000)
+        
+        valid_component_ids = None
+        if layout and layout.components_json:
+            try:
+                comps = json.loads(layout.components_json)
+                valid_component_ids = [c["id"] for c in comps]
+            except Exception:
+                pass
+
+        if valid_component_ids is not None and len(valid_component_ids) == 0:
+            records = []
+        else:
+            records = crud.get_kpi_data(
+                db, 
+                twin_id=request.twin_id, 
+                component_ids=valid_component_ids,
+                limit=5000
+            )
+            
         report_text = await run_report_agent(request.model_dump(), records)
         return {"report": report_text}
     except Exception as e:

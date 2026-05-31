@@ -69,12 +69,12 @@ export default function Chatbot() {
           chart: result.chart,
         }]);
       } else {
-        // Local mock fallback
+        // Offline mock fallback
         await new Promise(r => setTimeout(r, 700));
         setMessages(prev => [...prev, {
           id: Date.now() + 1,
           role: 'assistant',
-          text: buildLocalAnswer(q, kpis, components, selComp),
+          text: buildMockAnswer(q, kpis, components, selComp),
           chart: null,
         }]);
       }
@@ -82,7 +82,7 @@ export default function Chatbot() {
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
-        text: `⚠️ Backend error: ${e.message}. Using local KPI data instead.\n\n${buildLocalAnswer(q, kpis, components, selComp)}`,
+        text: `⚠️ Backend error: ${e.message}. Using offline mock data instead.\n\n${buildMockAnswer(q, kpis, components, selComp)}`,
         chart: null,
       }]);
     } finally {
@@ -110,7 +110,7 @@ export default function Chatbot() {
                 color: backendOnline === null ? '#64748b' : backendOnline ? '#10d98d' : '#f59e0b',
                 border: `1px solid ${backendOnline === null ? '#64748b40' : backendOnline ? '#10d98d40' : '#f59e0b40'}`,
               }}>
-                {backendOnline === null ? '⏳ connecting' : backendOnline ? '●backend' : '○ local mode'}
+                {backendOnline === null ? '⏳ connecting' : backendOnline === true ? '●backend' : `○ offline mode (${backendOnline})`}
               </span>
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-2)' }}>
@@ -211,7 +211,7 @@ function formatMsg(text) {
   );
 }
 
-function buildLocalAnswer(q, kpis, components, selComp) {
+function buildMockAnswer(q, kpis, components, selComp) {
   const ql = q.toLowerCase();
   if (!kpis.length) return 'No KPI data loaded yet. Import data via the KPIs panel or run the demo first.';
   const crit = kpis.filter(k => k.status === 'red');

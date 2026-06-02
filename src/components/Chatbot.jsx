@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { nlqQuery, getQuerySuggestions, checkBackendHealth } from '../services/api';
+import { nlqQuery, getQuerySuggestions, checkBackendHealth, rateQuery } from '../services/api';
 import DynamicChart from './DynamicChart';
 import useTwinStore from '../store/useTwinStore';
-import { Bot, PlusCircle } from 'lucide-react';
+import { Bot, PlusCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
 
 export default function Chatbot() {
   const { kpis, components, selectedComponentId, selectedDomain, activeTwinId, nlqMessages: messages, setNlqMessages: setMessages, clearNlqMessages } = useTwinStore();
@@ -64,6 +64,8 @@ export default function Chatbot() {
           role: 'assistant',
           text: result.answer,
           chart: result.chart,
+          queryId: result.queryId,
+          rating: null
         }]);
       } else {
         // Offline mock fallback
@@ -87,6 +89,16 @@ export default function Chatbot() {
       setCurrentThought('');
       // Refresh suggestions
       if (backendOnline) getQuerySuggestions(activeTwinId || 'default', selectedDomain).then(s => setSuggestions(s.map(x => x.text))).catch(() => {});
+    }
+  };
+
+  const handleRate = async (msgId, queryId, score) => {
+    if (!queryId) return;
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, rating: score } : m));
+    try {
+      await rateQuery(queryId, score);
+    } catch (e) {
+      console.error("Failed to submit feedback", e);
     }
   };
 
@@ -161,6 +173,26 @@ export default function Chatbot() {
             {msg.chart && msg.chart.data?.length > 0 && (
               <div style={{ width: '98%', marginTop: '6px', padding: '12px', background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: '10px' }}>
                 <DynamicChart config={msg.chart} height={180} />
+              </div>
+            )}
+            
+            {/* Feedback buttons */}
+            {msg.role === 'assistant' && msg.queryId && (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '6px', paddingLeft: '4px' }}>
+                <button 
+                  onClick={() => handleRate(msg.id, msg.queryId, 1)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', color: msg.rating === 1 ? 'var(--accent)' : 'var(--text-2)', display: 'flex', alignItems: 'center' }}
+                  title="Helpful"
+                >
+                  <ThumbsUp size={14} />
+                </button>
+                <button 
+                  onClick={() => handleRate(msg.id, msg.queryId, 0)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', color: msg.rating === 0 ? 'var(--red)' : 'var(--text-2)', display: 'flex', alignItems: 'center' }}
+                  title="Not Helpful"
+                >
+                  <ThumbsDown size={14} />
+                </button>
               </div>
             )}
           </div>

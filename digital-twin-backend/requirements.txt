@@ -23,3 +23,4 @@ databricks-sql-connector
 paho-mqtt==1.6.1
 langchain-groq==0.2.1
 PyJWT==2.8.0
+langfuse==2.53.8

@@ -15,7 +15,7 @@ export default function GridStep() {
   const [aiPrompt, setAiPrompt] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
-  const [backendOnline, setBackendOnline] = useState(false);
+  const [backendOnline, setBackendOnline] = useState(null);
   const [showAiBar, setShowAiBar] = useState(false);
   const [justAdded, setJustAdded] = useState(null);
 
@@ -142,8 +142,8 @@ export default function GridStep() {
           background: showAiBar ? 'rgba(72,101,242,0.15)' : 'transparent',
           color: showAiBar ? 'var(--accent)' : 'var(--text-2)' }}>
           <Bot size={14} /> AI Layout
-          <span style={{ fontSize: '8px', padding: '1px 4px', borderRadius: '4px', background: backendOnline === true ? 'rgba(16,217,141,0.2)' : 'rgba(245,158,11,0.2)', color: backendOnline === true ? '#10d98d' : '#f59e0b' }}>
-            {backendOnline === true ? 'live' : 'mock'}
+          <span style={{ fontSize: '8px', padding: '1px 4px', borderRadius: '4px', background: backendOnline === true ? 'rgba(16,217,141,0.2)' : backendOnline === null ? 'transparent' : 'rgba(245,158,11,0.2)', color: backendOnline === true ? '#10d98d' : backendOnline === null ? 'var(--text-2)' : '#f59e0b' }}>
+            {backendOnline === true ? 'live' : backendOnline === null ? '...' : 'mock'}
           </span>
         </button>
 

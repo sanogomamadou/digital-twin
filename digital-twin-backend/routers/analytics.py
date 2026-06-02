@@ -7,12 +7,13 @@ from models.schemas import (
     AnalyticsQueryRequest, AnalyticsQueryResponse,
     ChartFromPromptRequest, ChartConfig, QuerySuggestion, ReportRequest
 )
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 from agents.nlq_agent import run_nlq_agent_stream
 from agents.chart_agent import run_chart_agent
 from agents.report_agent import run_report_agent
 from routers.auth import get_current_user, get_user_id_for_read
-from db.database import UserDB
+from db.database import UserDB, QueryHistoryDB
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
@@ -135,6 +136,48 @@ async def generate_report(
         return {"report": report_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class FeedbackRequest(BaseModel):
+    score: int # 1 for thumbs up, 0 for thumbs down
+
+@router.post("/feedback/{query_id}")
+def submit_feedback(
+    query_id: int,
+    request: FeedbackRequest,
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user)
+):
+    """Submit thumbs up/down feedback for a query."""
+    record = db.query(QueryHistoryDB).filter(
+        QueryHistoryDB.id == query_id, 
+        QueryHistoryDB.user_id == current_user.id
+    ).first()
+    
+    if not record:
+        raise HTTPException(status_code=404, detail="Query not found")
+        
+    record.rating = request.score
+    db.commit()
+    
+    # Langfuse Data Flywheel: Push feedback to Langfuse trace
+    try:
+        from services.llm_service import get_langfuse_client
+        import uuid
+        client = get_langfuse_client()
+        if client:
+            trace_id_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"query_{query_id}")
+            client.score(
+                trace_id=str(trace_id_uuid),
+                name="user_feedback",
+                value=request.score,
+                comment="Thumbs up" if request.score == 1 else "Thumbs down"
+            )
+            client.flush()
+    except Exception as e:
+        print(f"[Langfuse] Failed to submit score: {e}")
+        
+    return {"status": "ok"}
 
 
 @router.get("/history")

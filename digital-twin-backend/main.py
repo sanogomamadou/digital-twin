@@ -7,13 +7,15 @@ from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 from db.database import create_tables
-from routers import layout, kpis, analytics, twins, share, auth
+from routers import layout, kpis, analytics, twins, share, auth, admin
 from routers.stream import router as stream_router, kpi_broadcaster, manager
 from routers.data_source import router as source_router, get_source_state
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s — %(message)s")
 logger = logging.getLogger(__name__)
+
+is_prod = os.getenv("ENVIRONMENT") == "production"
 
 app = FastAPI(
     title="Digital Twin Platform API",
@@ -22,8 +24,8 @@ app = FastAPI(
         "Column→component assignment · NLQ analytics · Real-time WebSocket streaming"
     ),
     version="2.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url=None if is_prod else "/docs",
+    redoc_url=None if is_prod else "/redoc",
 )
 
 # ─── Global error handler — always return JSON, never HTML ───────────────────
@@ -55,6 +57,7 @@ app.include_router(kpis.router)
 app.include_router(analytics.router)
 app.include_router(twins.router)
 app.include_router(share.router)
+app.include_router(admin.router)          # Admin routes
 app.include_router(stream_router)         # WebSocket + /stream/status
 app.include_router(source_router)         # /source/upload, /source/assign, etc.
 
@@ -118,11 +121,11 @@ async def _start_connectors():
 async def startup():
     create_tables()
 
-    from services.llm_service import has_real_llm, GROQ_MODEL
+    from services.llm_service import has_real_llm
     if has_real_llm():
-        logger.info(f"🚀 LLM: Groq API [{GROQ_MODEL}]")
+        logger.info(f"🚀 LLM: Groq API [Dynamic Config]")
     else:
-        logger.warning(f"🚀 LLM: Groq API missing — mock fallback (add GROQ_API_KEY to .env)")
+        logger.warning(f"🚀 LLM: Groq API missing — mock fallback")
 
     asyncio.create_task(kpi_broadcaster(), name="kpi_broadcaster")
     logger.info("📡 WebSocket broadcaster started — ws://localhost:8000/ws/kpis")
@@ -140,7 +143,7 @@ async def shutdown():
 # ─── Root ─────────────────────────────────────────────────────────────────────
 @app.get("/")
 def root():
-    from services.llm_service import has_real_llm, GROQ_MODEL
+    from services.llm_service import has_real_llm
     from connectors.postgres_connector import get_postgres_connector
     pc = get_postgres_connector()
     return {
@@ -148,7 +151,7 @@ def root():
         "version": "2.2.0-PG",
         "docs": "/docs",
         "llm_mode": "groq" if has_real_llm() else "mock",
-        "model": GROQ_MODEL,
+        "model": "dynamic-db-config",
         "ws_endpoint": "ws://localhost:8000/ws/kpis",
         "source_status": {
             "domain": pc.domain if pc else None,

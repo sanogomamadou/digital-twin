@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -24,6 +24,7 @@ class UserDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
+    role = Column(String, default="user")
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -64,8 +65,9 @@ class QueryHistoryDB(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, index=True, nullable=True)
     question = Column(Text, nullable=False)
-    answer = Column(Text)
-    chart_config_json = Column(Text)
+    answer = Column(Text, nullable=True)
+    chart_config_json = Column(Text, nullable=True)
+    rating = Column(Integer, nullable=True) # 1 for upvote, 0 for downvote, None for unrated
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
@@ -97,6 +99,30 @@ class ShareLinkDB(Base):
     name = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class LLMConfigDB(Base):
+    __tablename__ = "llm_config"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    model = Column(String, default="llama3-70b-8192")
+    temperature = Column(Float, default=0.2)
+    max_tokens = Column(Integer, default=4096)
+    system_prompt = Column(Text, default="You are a helpful AI assistant.")
+    api_keys_json = Column(Text, default="[]")  # List of API keys
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AgentMetricsDB(Base):
+    __tablename__ = "agent_metrics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trace_id = Column(String, index=True)
+    latency_ms = Column(Float, default=0.0)
+    token_count = Column(Integer, default=0)
+    success = Column(Integer, default=1)  # 1 for success, 0 for failure
+    error_message = Column(Text, nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
 
 
 def create_tables():

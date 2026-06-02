@@ -105,6 +105,21 @@ export default function Navbar() {
                             <User size={14} color="var(--accent)" />
                             {user.username}
                         </div>
+                        {user.role === 'admin' && (
+                            <button
+                                onClick={() => window.location.href = '/admin'}
+                                style={{
+                                    display: 'flex', alignItems: 'center', gap: '4px',
+                                    background: 'var(--accent)', color: 'white', border: 'none',
+                                    cursor: 'pointer', fontSize: '13px', padding: '4px 12px', borderRadius: '6px',
+                                    fontWeight: 600, transition: 'background 0.2s',
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-hover)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'var(--accent)'}
+                            >
+                                Admin Dashboard
+                            </button>
+                        )}
                         <button
                             onClick={handleLogout}
                             style={{

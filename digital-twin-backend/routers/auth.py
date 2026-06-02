@@ -72,6 +72,15 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserDB:
     return user
 
 
+def require_admin(current_user: UserDB = Depends(get_current_user)) -> UserDB:
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required",
+        )
+    return current_user
+
+
 def get_user_id_for_read(request: Request) -> int:
     """Dependency that extracts user_id from either access_token or share_token for read-only routes."""
     token = request.cookies.get("access_token")
@@ -129,7 +138,7 @@ def login(user_data: UserLogin, response: Response, db: Session = Depends(get_db
         
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.id, "username": user.username}, expires_delta=access_token_expires
+        data={"sub": user.id, "username": user.username, "role": user.role}, expires_delta=access_token_expires
     )
     
     response.set_cookie(

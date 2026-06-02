@@ -16,6 +16,7 @@ class UserLogin(BaseModel):
 class UserRead(BaseModel):
     id: int
     username: str
+    role: str = "user"
     created_at: datetime
 
 class Token(BaseModel):

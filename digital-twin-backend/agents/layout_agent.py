@@ -16,7 +16,7 @@ from models.schemas import (
     LayoutStateSchema, ComponentSchema, ConnectionSchema,
     LayoutAction, LayoutLLMResponse, LayoutPromptResponse
 )
-from services.llm_service import get_llm, has_real_llm
+from services.llm_service import get_llm, has_real_llm, get_base_system_prompt
 from langchain_core.messages import SystemMessage, HumanMessage
 
 # ─── Default component palettes per domain ────────────────────────────────────
@@ -455,8 +455,11 @@ async def run_layout_agent(prompt: str, current_state: LayoutStateSchema) -> Lay
         
 
         def generator_node(state: LayoutAgentState):
+            base_prompt = get_base_system_prompt()
+            full_system_prompt = f"{base_prompt}\n\n{LAYOUT_SYSTEM_PROMPT}" if base_prompt else LAYOUT_SYSTEM_PROMPT
+            
             msgs = [
-                SystemMessage(content=LAYOUT_SYSTEM_PROMPT),
+                SystemMessage(content=full_system_prompt),
                 HumanMessage(content=f"Current layout:\n{context}\n\nInstruction: {prompt}")
             ]
             if state.get("feedback"):

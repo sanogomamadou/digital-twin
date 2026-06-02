@@ -16,6 +16,7 @@ import TwinView from './pages/TwinView';
 import SharedTwinView from './pages/SharedTwinView';
 import AuthPage from './pages/AuthPage';
 import useAuthStore from './store/useAuthStore';
+import AdminLayout from './pages/admin/AdminLayout';
 
 export default function App() {
   const { currentStep } = useTwinStore();
@@ -36,6 +37,14 @@ export default function App() {
         <SharedTwinView shareId={shareId} />
       </div>
     );
+  }
+
+  if (path.startsWith('/admin')) {
+    if (!user || user.role !== 'admin') {
+      window.location.href = '/';
+      return null;
+    }
+    return <AdminLayout />;
   }
 
   const renderPage = () => {

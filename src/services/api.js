@@ -229,6 +229,13 @@ export async function generateReport(data) {
     });
 }
 
+export async function rateQuery(queryId, score) {
+    return apiFetch(`/analytics/feedback/${queryId}`, {
+        method: 'POST',
+        body: JSON.stringify({ score }),
+    });
+}
+
 // ─── Twins CRUD API ───────────────────────────────────────────────────────────
 
 export async function listTwins() {
@@ -281,15 +288,57 @@ export async function verifyShareLink(shareId, password) {
     });
 }
 
+// ─── Admin API ────────────────────────────────────────────────────────────────
+
+export async function getAdminUsers() {
+    return apiFetch('/admin/users');
+}
+
+export async function updateAdminUserRole(userId, role) {
+    return apiFetch(`/admin/users/${userId}/role`, {
+        method: 'PUT',
+        body: JSON.stringify({ role }),
+    });
+}
+
+export async function deleteAdminUser(userId) {
+    return apiFetch(`/admin/users/${userId}`, { method: 'DELETE' });
+}
+
+export async function resetAdminUserPassword(userId, newPassword) {
+    return apiFetch(`/admin/users/${userId}/password`, {
+        method: 'PUT',
+        body: JSON.stringify({ new_password: newPassword }),
+    });
+}
+
+export async function getLLMConfig() {
+    return apiFetch('/admin/llm-config');
+}
+
+export async function updateLLMConfig(config) {
+    return apiFetch('/admin/llm-config', {
+        method: 'PUT',
+        body: JSON.stringify(config),
+    });
+}
+
+export async function getAdminMetrics() {
+    return apiFetch('/admin/metrics');
+}
+
 // ─── Health check ─────────────────────────────────────────────────────────────
 
 export async function checkBackendHealth() {
     try {
         const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 3000);
+        const id = setTimeout(() => controller.abort("Timeout (backend injoignable après 3s)"), 3000);
         const res = await fetch(`${BASE_URL}/health`, { signal: controller.signal });
         clearTimeout(id);
-        if (res.ok) return true;
+        if (res.ok) {
+            const data = await res.json();
+            return data.llm_ready ? true : 'llm_offline';
+        }
         return `HTTP ${res.status}`;
     } catch (e) {
         console.error("Health check failed:", e);

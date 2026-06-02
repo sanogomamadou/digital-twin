@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Lock, ArrowRight, Loader2 } from 'lucide-react';
-import { loginUser, registerUser } from '../services/api';
+import { loginUser, registerUser, getMe } from '../services/api';
 import useAuthStore from '../store/useAuthStore';
 
 export default function AuthPage() {
@@ -26,11 +26,13 @@ export default function AuthPage() {
     try {
       if (isLogin) {
         const data = await loginUser(username, password);
-        login({ username }, data.access_token);
+        const userData = await getMe();
+        login(userData, data.access_token);
       } else {
         await registerUser(username, password);
         const data = await loginUser(username, password);
-        login({ username }, data.access_token);
+        const userData = await getMe();
+        login(userData, data.access_token);
       }
     } catch (err) {
       setError(err.message || 'Une erreur est survenue');

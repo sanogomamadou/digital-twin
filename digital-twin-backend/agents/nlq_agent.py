@@ -16,9 +16,19 @@ from services.data_service import (
 )
 from agents.tools import current_records_var
 from agents.graph_orchestrator import create_analytics_orchestrator
-from services.llm_service import get_llm, has_real_llm
+from services.llm_service import get_llm, has_real_llm, get_base_system_prompt
 from agents.utils import extract_json_from_text
 from agents.chart_agent import run_chart_agent
+from services.llm_service import get_langfuse_prompt
+from langchain_core.output_parsers import PydanticOutputParser
+from pydantic import BaseModel, Field
+import uuid
+
+class NLQResponseSchema(BaseModel):
+    answer: str = Field(description="Direct, insightful answer based on the tool results (max 3-4 sentences).")
+    chart_instruction: str = Field(description="A clear, natural language instruction for a dedicated Data Visualization Agent.")
+
+parser = PydanticOutputParser(pydantic_object=NLQResponseSchema)
 
 NLQ_SYSTEM_PROMPT = """You are an expert analytics AI for a Digital Twin platform.
 You have access to tools to query KPI statistics, detect anomalies, view recent values, get the trend of a KPI over time, and compare a KPI across components.
@@ -35,11 +45,8 @@ When you have gathered enough information, you MUST return your final answer as 
 - "chart_instruction": string — a clear, natural language instruction for a dedicated Data Visualization Agent. Describe exactly what kind of chart would best illustrate your answer, what KPIs to plot, and any important reference lines (e.g. "Create a line chart comparing [KPI_1] and [KPI_2] over the last 24h, with a red reference line at 80%").
 
 CRITICAL: Your final response MUST be ONLY valid JSON, no markdown blocks, no ```json, no extra text.
+{format_instructions}
 """
-
-
-
-
 
 import asyncio
 from typing import AsyncGenerator
@@ -85,8 +92,13 @@ async def run_nlq_agent_stream(
     try:
         app = create_analytics_orchestrator()
         
+        base_prompt = get_base_system_prompt()
+        dynamic_nlq_prompt = get_langfuse_prompt("nlq_system_prompt", fallback_prompt=NLQ_SYSTEM_PROMPT)
+        dynamic_nlq_prompt = dynamic_nlq_prompt.replace("{format_instructions}", parser.get_format_instructions())
+        
+        full_system_prompt = f"{base_prompt}\n\n{dynamic_nlq_prompt}" if base_prompt else dynamic_nlq_prompt
 
-        messages_list = [SystemMessage(content=NLQ_SYSTEM_PROMPT)]
+        messages_list = [SystemMessage(content=full_system_prompt)]
         if getattr(request, 'history', None):
             from langchain_core.messages import AIMessage
             for msg in request.history[-6:]: # Keep last 3 turns
@@ -101,8 +113,9 @@ async def run_nlq_agent_stream(
             "messages": messages_list
         }
 
-        
-        config = {"recursion_limit": 10}
+        # Create deterministic UUID for trace_id to link feedback later
+        trace_id_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"query_{db_query_id}")
+        config = {"recursion_limit": 10, "run_id": trace_id_uuid}
         yield f'data: ' + json.dumps({"type": "thought", "content": "Contacting Groq LLM..."}) + '\n\n'
         await asyncio.sleep(0.05)
         
@@ -131,9 +144,17 @@ async def run_nlq_agent_stream(
                 raise ValueError("No response from agent")
                 
             final_message = last_agent_message.content
-            llm_result = extract_json_from_text(final_message)
+            
+            # Guardrails: Attempt to parse with Pydantic
+            try:
+                parsed_output = parser.parse(final_message)
+                llm_result = parsed_output.model_dump()
+            except Exception as parse_e:
+                print(f"[Guardrails] Pydantic parsing failed: {parse_e}. Falling back to dirty JSON extract.")
+                llm_result = extract_json_from_text(final_message)
+                
             if not llm_result:
-                raise ValueError("Could not extract JSON from response.")
+                raise ValueError("Could not extract or validate JSON from response.")
                 
         except Exception as e:
             print(f"Error in NLQ agent: {e}")

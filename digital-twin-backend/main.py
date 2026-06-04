@@ -121,6 +121,14 @@ async def _start_connectors():
 async def startup():
     create_tables()
 
+    try:
+        from sqlalchemy import text
+        from db.database import engine
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'user';"))
+    except Exception as e:
+        logger.warning(f"Auto-migration skipped: {e}")
+
     from services.llm_service import has_real_llm
     if has_real_llm():
         logger.info(f"🚀 LLM: Groq API [Dynamic Config]")

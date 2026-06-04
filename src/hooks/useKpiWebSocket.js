@@ -12,7 +12,12 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import useTwinStore from '../store/useTwinStore';
 
 const WS_URL = (twinId = 'default') => {
-  // Use window.location.host so the Vite proxy forwards the WebSocket and includes the HttpOnly cookie
+  // En production (Vercel), on utilise VITE_API_URL, sinon en local on passe par le proxy Vite
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl) {
+    const wsUrl = apiUrl.replace(/^http/, 'ws');
+    return `${wsUrl}/ws/kpis?twin_id=${twinId}`;
+  }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${protocol}//${window.location.host}/ws/kpis?twin_id=${twinId}`;
 };

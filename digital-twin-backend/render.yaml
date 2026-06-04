@@ -1,0 +1,32 @@
+services:
+  # Service Web Principal (FastAPI)
+  - type: web
+    name: digital-twin-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: DATABASE_URL
+        sync: false
+      - key: TELEMETRY_DB_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  # Script de Génération de Données (Background Worker)
+  - type: worker
+    name: digital-twin-data-generator
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python generate_pg_data.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: DATABASE_URL
+        sync: false
+      - key: TELEMETRY_DB_URL
+        sync: false

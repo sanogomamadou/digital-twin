@@ -133,7 +133,7 @@ async def run_nlq_agent_stream(
                         last_agent_message = last_message
                         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
                             for tc in last_message.tool_calls:
-                                yield f'data: {json.dumps({"type": "thought", "content": f"Using tool: {tc.get("name")}..."})}\n\n'
+                                yield f'data: {json.dumps({"type": "thought", "content": f"Using tool: {tc.get(\'name\')}..."})}\n\n'
                                 await asyncio.sleep(0.05)
                     elif node == "tools":
                         # Tools finished executing

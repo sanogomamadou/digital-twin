@@ -138,6 +138,13 @@ async def startup():
     asyncio.create_task(kpi_broadcaster(), name="kpi_broadcaster")
     logger.info("📡 WebSocket broadcaster started — ws://localhost:8000/ws/kpis")
 
+    import threading
+    from generate_pg_data import simulate_stream
+    
+    generator_thread = threading.Thread(target=simulate_stream, daemon=True)
+    generator_thread.start()
+    logger.info("📡 Background data generator started inside Web Service")
+
     await _start_connectors()
     logger.info("✅ Digital Twin Backend v2.1 ready — http://localhost:8000/docs")
 

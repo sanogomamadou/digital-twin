@@ -8,9 +8,10 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import useAuthStore from '../store/useAuthStore';
 
 async function apiFetch(path, options = {}) {
-    
+    const token = useAuthStore.getState().token;
     const headers = {
         'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...(options.headers || {}),
     };
 
@@ -67,8 +68,9 @@ export async function registerUser(username, password) {
     });
 }
 
-export async function getMe() {
-    return apiFetch('/auth/me');
+export async function getMe(token) {
+    const options = token ? { headers: { 'Authorization': `Bearer ${token}` } } : {};
+    return apiFetch('/auth/me', options);
 }
 
 // ─── Layout API ───────────────────────────────────────────────────────────────

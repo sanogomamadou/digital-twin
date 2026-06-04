@@ -26,12 +26,12 @@ export default function AuthPage() {
     try {
       if (isLogin) {
         const data = await loginUser(username, password);
-        const userData = await getMe();
+        const userData = await getMe(data.access_token);
         login(userData, data.access_token);
       } else {
         await registerUser(username, password);
         const data = await loginUser(username, password);
-        const userData = await getMe();
+        const userData = await getMe(data.access_token);
         login(userData, data.access_token);
       }
     } catch (err) {

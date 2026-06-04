@@ -146,7 +146,7 @@ def login(user_data: UserLogin, response: Response, db: Session = Depends(get_db
         value=access_token,
         httponly=True,
         secure=(os.getenv("ENVIRONMENT") == "production"),
-        samesite="lax",
+        samesite="none" if os.getenv("ENVIRONMENT") == "production" else "lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     
@@ -158,7 +158,7 @@ def logout(response: Response):
         key="access_token", 
         httponly=True, 
         secure=(os.getenv("ENVIRONMENT") == "production"),
-        samesite="lax"
+        samesite="none" if os.getenv("ENVIRONMENT") == "production" else "lax"
     )
     return {"status": "logged_out"}
 

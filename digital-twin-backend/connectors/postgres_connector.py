@@ -62,8 +62,15 @@ class PostgresConnector(BaseConnector):
             return None
 
     def _evaluate_formula(self, formula: str, row: dict) -> float:
+        safe_row = {}
+        for k, v in row.items():
+            if isinstance(v, datetime):
+                safe_row[k] = v.timestamp()
+            else:
+                safe_row[k] = v
+                
         try:
-            val = simple_eval(formula, names=row)
+            val = simple_eval(formula, names=safe_row)
             return float(val)
         except NameNotDefined as e:
             # Column referenced in formula doesn't exist in this table — expected

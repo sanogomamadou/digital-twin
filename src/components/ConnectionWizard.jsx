@@ -14,7 +14,7 @@ const SOURCE_TYPES = [
 export default function ConnectionWizard() {
   const { activeTwinId } = useTwinStore();
   const [sourceType, setSourceType] = useState('postgres');
-  const [dbUrl, setDbUrl] = useState('postgresql://postgres:postgrespassword@localhost:5433/telemetry_db');
+  const [dbUrl, setDbUrl] = useState('');
   const [credentials, setCredentials] = useState({ db_name: '', access_token: '', topic: '', port: '1883', username: '', password: '' });
   
   const [tables, setTables] = useState([]);
@@ -96,7 +96,7 @@ export default function ConnectionWizard() {
     setSourceType(t);
     setTables([]);
     setSelectedTable('');
-    if (t === 'postgres') setDbUrl('postgresql://postgres:postgrespassword@localhost:5433/telemetry_db');
+    if (t === 'postgres') setDbUrl('');
     if (t === 'mongo') setDbUrl('mongodb://localhost:27017/');
     if (t === 'cassandra') setDbUrl('127.0.0.1');
     if (t === 'databricks') setDbUrl('dbc-xxxxx.cloud.databricks.com');

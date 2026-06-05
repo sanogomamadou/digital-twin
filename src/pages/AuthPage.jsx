@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Lock, ArrowRight, Loader2 } from 'lucide-react';
-import { loginUser, registerUser, getMe } from '../services/api';
+import { loginUser, getMe } from '../services/api';
 import useAuthStore from '../store/useAuthStore';
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,16 +23,9 @@ export default function AuthPage() {
     setError('');
     
     try {
-      if (isLogin) {
-        const data = await loginUser(username, password);
-        const userData = await getMe(data.access_token);
-        login(userData, data.access_token);
-      } else {
-        await registerUser(username, password);
-        const data = await loginUser(username, password);
-        const userData = await getMe(data.access_token);
-        login(userData, data.access_token);
-      }
+      const data = await loginUser(username, password);
+      const userData = await getMe(data.access_token);
+      login(userData, data.access_token);
     } catch (err) {
       setError(err.message || 'Une erreur est survenue');
     } finally {
@@ -64,8 +56,8 @@ export default function AuthPage() {
             >
               <div className="auth-logo-inner" />
             </motion.div>
-            <h2>{isLogin ? 'Bienvenue' : 'Créer un compte'}</h2>
-            <p>{isLogin ? 'Connectez-vous pour accéder à vos jumeaux numériques' : 'Rejoignez-nous pour modéliser vos systèmes'}</p>
+            <h2>Bienvenue</h2>
+            <p>Connectez-vous pour accéder à vos jumeaux numériques</p>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
@@ -113,27 +105,14 @@ export default function AuthPage() {
             >
               {loading ? <Loader2 className="spinner" size={20} /> : (
                 <>
-                  {isLogin ? 'Se connecter' : "S'inscrire"}
+                  Se connecter
                   <ArrowRight size={18} />
                 </>
               )}
             </motion.button>
           </form>
 
-          <div className="auth-footer">
-            <p>
-              {isLogin ? "Vous n'avez pas de compte ?" : "Vous avez déjà un compte ?"}
-              <button 
-                className="auth-switch-btn" 
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError('');
-                }}
-              >
-                {isLogin ? "S'inscrire" : "Se connecter"}
-              </button>
-            </p>
-          </div>
+
         </div>
       </motion.div>
     </div>

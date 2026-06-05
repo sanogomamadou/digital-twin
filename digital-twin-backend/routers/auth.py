@@ -113,19 +113,6 @@ def get_user_id_for_read(request: Request) -> int:
         raise HTTPException(status_code=400, detail="Invalid user id in token")
 
 
-@router.post("/register", response_model=UserRead)
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    db_user = db.query(UserDB).filter(UserDB.username == user_data.username).first()
-    if db_user:
-        raise HTTPException(status_code=400, detail="Username already registered")
-        
-    hashed_password = get_password_hash(user_data.password)
-    new_user = UserDB(username=user_data.username, password_hash=hashed_password)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
-
 
 @router.post("/login", response_model=Token)
 def login(user_data: UserLogin, response: Response, db: Session = Depends(get_db)):

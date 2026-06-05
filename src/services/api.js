@@ -61,12 +61,6 @@ export async function logoutUser() {
     });
 }
 
-export async function registerUser(username, password) {
-    return apiFetch('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ username, password }),
-    });
-}
 
 export async function getMe(token) {
     const options = token ? { headers: { 'Authorization': `Bearer ${token}` } } : {};
@@ -294,6 +288,13 @@ export async function verifyShareLink(shareId, password) {
 
 export async function getAdminUsers() {
     return apiFetch('/admin/users');
+}
+
+export async function createAdminUser(username, password, role) {
+    return apiFetch('/admin/users', {
+        method: 'POST',
+        body: JSON.stringify({ username, password, role }),
+    });
 }
 
 export async function updateAdminUserRole(userId, role) {

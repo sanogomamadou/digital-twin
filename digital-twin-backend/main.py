@@ -132,6 +132,15 @@ async def startup():
                     if not column.primary_key:
                         sql = f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column.name} {col_type};"
                         conn.execute(text(sql))
+            
+            # Seed default admin if no users exist
+            result = conn.execute(text("SELECT count(*) FROM users"))
+            if result.scalar() == 0:
+                from routers.auth import get_password_hash
+                admin_pw = get_password_hash("admin")
+                conn.execute(text(f"INSERT INTO users (username, password_hash, role) VALUES ('admin', '{admin_pw}', 'admin')"))
+                logger.info("🛡️ Created default admin user (admin/admin)")
+                
     except Exception as e:
         logger.warning(f"Auto-migration skipped: {e}")
 

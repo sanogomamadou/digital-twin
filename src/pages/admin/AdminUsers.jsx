@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
-import { getAdminUsers, updateAdminUserRole, deleteAdminUser, resetAdminUserPassword } from '../../services/api';
-import { Trash2, Shield, ShieldAlert, KeyRound } from 'lucide-react';
+import { getAdminUsers, updateAdminUserRole, deleteAdminUser, resetAdminUserPassword, createAdminUser } from '../../services/api';
+import { Trash2, Shield, ShieldAlert, KeyRound, UserPlus } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 
 export default function AdminUsers() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showCreate, setShowCreate] = useState(false);
+    const [newUsername, setNewUsername] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [newRole, setNewRole] = useState('user');
+    
     const { user: currentUser } = useAuthStore();
 
     useEffect(() => {
@@ -20,6 +25,20 @@ export default function AdminUsers() {
             console.error(e);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleCreateUser = async (e) => {
+        e.preventDefault();
+        try {
+            await createAdminUser(newUsername, newPassword, newRole);
+            setNewUsername('');
+            setNewPassword('');
+            setNewRole('user');
+            setShowCreate(false);
+            fetchUsers();
+        } catch (e) {
+            alert('Error creating user: ' + e.message);
         }
     };
 
@@ -57,7 +76,39 @@ export default function AdminUsers() {
 
     return (
         <div>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, marginBottom: '8px' }}>Users Management</h1>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Users Management</h1>
+                <button onClick={() => setShowCreate(!showCreate)} style={{ ...actionBtnStyle, background: 'var(--accent)', color: 'white' }}>
+                    <UserPlus size={16} style={{ marginRight: '6px' }} /> Add User
+                </button>
+            </div>
+            <p style={{ color: 'var(--text-2)', marginBottom: '32px' }}>Manage platform access, roles, and security.</p>
+
+            {showCreate && (
+                <div style={{ background: 'var(--bg-1)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '24px' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>Create New User</h3>
+                    <form onSubmit={handleCreateUser} style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-2)', marginBottom: '6px' }}>Username</label>
+                            <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} required style={inputStyle} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-2)', marginBottom: '6px' }}>Password</label>
+                            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required style={inputStyle} />
+                        </div>
+                        <div style={{ width: '150px' }}>
+                            <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-2)', marginBottom: '6px' }}>Role</label>
+                            <select value={newRole} onChange={e => setNewRole(e.target.value)} style={inputStyle}>
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" style={{ ...actionBtnStyle, background: 'var(--accent)', color: 'white', padding: '10px 20px', height: '40px' }}>
+                            Create
+                        </button>
+                    </form>
+                </div>
+            )}
             <p style={{ color: 'var(--text-2)', marginBottom: '32px' }}>Manage platform access, roles, and security.</p>
 
             <div style={{ background: 'var(--bg-1)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
@@ -130,4 +181,15 @@ const actionBtnStyle = {
     background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px',
     padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: 'var(--text-1)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
+};
+
+const inputStyle = {
+    width: '100%',
+    padding: '8px 12px',
+    background: 'var(--bg-2)',
+    border: '1px solid var(--border)',
+    borderRadius: '6px',
+    color: 'var(--text-1)',
+    fontSize: '14px',
+    outline: 'none'
 };

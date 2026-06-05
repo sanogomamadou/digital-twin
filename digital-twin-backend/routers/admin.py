@@ -27,6 +27,28 @@ class LLMConfig(BaseModel):
     system_prompt: str
     api_keys: List[str]
 
+class UserCreateWithRole(BaseModel):
+    username: str
+    password: str
+    role: str
+
+@router.post("/users", response_model=UserRead)
+def create_user(user_data: UserCreateWithRole, db: Session = Depends(get_db), current_admin: UserDB = Depends(require_admin)):
+    """Admin creates a new user."""
+    db_user = db.query(UserDB).filter(UserDB.username == user_data.username).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Username already registered")
+        
+    if user_data.role not in ["user", "admin"]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+        
+    hashed_password = get_password_hash(user_data.password)
+    new_user = UserDB(username=user_data.username, password_hash=hashed_password, role=user_data.role)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
 @router.get("/users", response_model=List[UserRead])
 def list_users(db: Session = Depends(get_db), current_admin: UserDB = Depends(require_admin)):
     """Fetch all users."""

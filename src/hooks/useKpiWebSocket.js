@@ -12,14 +12,17 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import useTwinStore from '../store/useTwinStore';
 
 const WS_URL = (twinId = 'default') => {
+  const token = useTwinStore.getState().token || (window.localStorage.getItem('auth-storage') ? JSON.parse(window.localStorage.getItem('auth-storage'))?.state?.token : null);
+  const tokenQuery = token ? `&token=${token}` : '';
+  
   // En production (Vercel), on utilise VITE_API_URL, sinon en local on passe par le proxy Vite
   const apiUrl = import.meta.env.VITE_API_URL;
   if (apiUrl) {
     const wsUrl = apiUrl.replace(/^http/, 'ws');
-    return `${wsUrl}/ws/kpis?twin_id=${twinId}`;
+    return `${wsUrl}/ws/kpis?twin_id=${twinId}${tokenQuery}`;
   }
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.host}/ws/kpis?twin_id=${twinId}`;
+  return `${protocol}//${window.location.host}/ws/kpis?twin_id=${twinId}${tokenQuery}`;
 };
 
 const STATUS = {

@@ -153,8 +153,9 @@ async def _persist_reading(reading: KpiReading):
 async def kpi_stream(
     websocket: WebSocket,
     twin_id: str = Query("default"),
+    token_query: str = Query(None, alias="token"),
 ):
-    token = websocket.cookies.get("access_token")
+    token = websocket.cookies.get("access_token") or token_query
     share_token = websocket.cookies.get("share_token")
     
     user_id = None

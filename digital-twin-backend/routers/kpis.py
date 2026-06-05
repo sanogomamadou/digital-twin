@@ -15,6 +15,7 @@ async def import_kpi_file(
     file: UploadFile = File(...),
     component_id: str = Form(...),
     kpi_name: str = Form(...),
+    twin_id: str = Form("default"),
     value_col: str = Form(None),
     timestamp_col: str = Form(None),
     unit_col: str = Form(None),
@@ -23,6 +24,8 @@ async def import_kpi_file(
     current_user: UserDB = Depends(get_current_user),
 ):
     """Upload a CSV or Excel file and store KPI data for a component."""
+    if twin_id == "default":
+        twin_id = f"default_{current_user.id}"
     if not file.filename.endswith((".csv", ".xlsx", ".xls")):
         raise HTTPException(status_code=400, detail="Only CSV and Excel files are supported.")
 
@@ -65,10 +68,13 @@ async def push_realtime_kpi(
     kpi_name: str,
     value: float,
     unit: str = "",
+    twin_id: str = "default",
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user),
 ):
     """Push a single real-time KPI reading."""
+    if twin_id == "default":
+        twin_id = f"default_{current_user.id}"
     crud.insert_kpi_records(db, twin_id, component_id, kpi_name, [{
         "value": value, "unit": unit,
         "timestamp": datetime.utcnow(), "source": "realtime"
@@ -77,15 +83,19 @@ async def push_realtime_kpi(
 
 
 @router.get("/summary")
-def get_kpi_summary(db: Session = Depends(get_db), user_id: int = Depends(get_user_id_for_read)):
+def get_kpi_summary(twin_id: str = "default", db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     """Get aggregated KPI summary across all components."""
-    return crud.get_all_kpi_summary(db, user_id)
+    if twin_id == "default":
+        twin_id = f"default_{current_user.id}"
+    return crud.get_all_kpi_summary(db, twin_id)
 
 
 @router.get("/{component_id}")
-def get_component_kpis(component_id: str, kpi_name: str = None, limit: int = 200, db: Session = Depends(get_db), user_id: int = Depends(get_user_id_for_read)):
+def get_component_kpis(component_id: str, twin_id: str = "default", kpi_name: str = None, limit: int = 200, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     """Get raw KPI data for a specific component."""
-    records = crud.get_kpi_data(db, user_id, component_id, kpi_name, limit)
+    if twin_id == "default":
+        twin_id = f"default_{current_user.id}"
+    records = crud.get_kpi_data(db, twin_id=twin_id, component_id=component_id, kpi_name=kpi_name, limit=limit)
     return [
         {"id": r.id, "componentId": r.component_id, "kpiName": r.kpi_name,
          "value": r.value, "unit": r.unit, "timestamp": str(r.timestamp), "source": r.source}
@@ -94,7 +104,9 @@ def get_component_kpis(component_id: str, kpi_name: str = None, limit: int = 200
 
 
 @router.delete("/{component_id}")
-def delete_component_kpis(component_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
+def delete_component_kpis(component_id: str, twin_id: str = "default", db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     """Clear all KPI data for a component."""
-    crud.delete_kpi_data(db, current_user.id, component_id)
+    if twin_id == "default":
+        twin_id = f"default_{current_user.id}"
+    crud.delete_kpi_data(db, twin_id, component_id)
     return {"status": "deleted", "componentId": component_id}

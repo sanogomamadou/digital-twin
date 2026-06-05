@@ -168,16 +168,17 @@ def get_query_history(db: Session, user_id: int, limit: int = 20) -> list[QueryH
 # ─── User Configuration CRUD ──────────────────────────────────────────────────
 
 def get_user_configuration(db: Session, twin_id: str, user_id: int = None) -> UserConfigurationDB | None:
+    if twin_id == "default" and user_id is not None:
+        twin_id = f"default_{user_id}"
+
     query = db.query(UserConfigurationDB).filter(UserConfigurationDB.twin_id == twin_id)
     if user_id is not None:
         query = query.filter(UserConfigurationDB.user_id == user_id)
     config = query.first()
     
-    if not config and twin_id != "default":
+    if not config and (twin_id == "default" or twin_id.startswith("default_")):
         # Fallback to the global default configuration if the twin doesn't have a specific one yet
         fallback_query = db.query(UserConfigurationDB).filter(UserConfigurationDB.twin_id == "default")
-        if user_id is not None:
-            fallback_query = fallback_query.filter(UserConfigurationDB.user_id == user_id)
         config = fallback_query.first()
     return config
 
@@ -187,6 +188,9 @@ def get_all_user_configurations(db: Session) -> list[UserConfigurationDB]:
 
 
 def update_user_configuration(db: Session, twin_id: str, user_id: int, config_data: dict) -> UserConfigurationDB:
+    if twin_id == "default" and user_id is not None:
+        twin_id = f"default_{user_id}"
+
     config = db.query(UserConfigurationDB).filter(UserConfigurationDB.twin_id == twin_id, UserConfigurationDB.user_id == user_id).first()
     if not config:
         config = UserConfigurationDB(twin_id=twin_id, user_id=user_id)

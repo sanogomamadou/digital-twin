@@ -123,10 +123,15 @@ async def startup():
 
     try:
         from sqlalchemy import text
-        from db.database import engine
+        from db.database import engine, Base
         with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'user';"))
-            conn.execute(text("ALTER TABLE share_links ADD COLUMN IF NOT EXISTS user_id INTEGER;"))
+            for table_name, table in Base.metadata.tables.items():
+                for column in table.columns:
+                    col_type = column.type.compile(engine.dialect)
+                    # Skip primary keys, as they are guaranteed to exist if the table exists
+                    if not column.primary_key:
+                        sql = f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {column.name} {col_type};"
+                        conn.execute(text(sql))
     except Exception as e:
         logger.warning(f"Auto-migration skipped: {e}")
 

@@ -22,14 +22,13 @@ router = APIRouter(prefix="/analytics", tags=["Analytics"])
 async def nlq_query(
     request: AnalyticsQueryRequest, 
     db: Session = Depends(get_db),
-    current_user: UserDB = Depends(get_current_user)
+    user_id: int = Depends(get_user_id_for_read)
 ):
     """
     Ask a natural language question about KPI data.
     Returns an answer + a chart configuration ready for Recharts as a SSE stream.
     """
     try:
-        user_id = current_user.id
         layout = crud.get_layout(db, user_id, request.twin_id)
         valid_component_ids = None
         if layout and layout.components_json:
@@ -91,7 +90,7 @@ async def nlq_query(
 @router.post("/chart", response_model=ChartConfig)
 async def chart_from_prompt(
     request: ChartFromPromptRequest,
-    current_user: UserDB = Depends(get_current_user)
+    user_id: int = Depends(get_user_id_for_read)
 ):
     """
     Given raw data and a prompt, generate the best Recharts chart config.
@@ -105,13 +104,12 @@ async def chart_from_prompt(
 async def generate_report(
     request: ReportRequest, 
     db: Session = Depends(get_db),
-    current_user: UserDB = Depends(get_current_user)
+    user_id: int = Depends(get_user_id_for_read)
 ):
     """
     Generate an AI PDF report text based on the current twin data and historical DB data.
     """
     try:
-        user_id = current_user.id
         layout = crud.get_layout(db, user_id, request.twin_id)
         
         valid_component_ids = None
@@ -146,12 +144,12 @@ def submit_feedback(
     query_id: int,
     request: FeedbackRequest,
     db: Session = Depends(get_db),
-    current_user: UserDB = Depends(get_current_user)
+    user_id: int = Depends(get_user_id_for_read)
 ):
     """Submit thumbs up/down feedback for a query."""
     record = db.query(QueryHistoryDB).filter(
         QueryHistoryDB.id == query_id, 
-        QueryHistoryDB.user_id == current_user.id
+        QueryHistoryDB.user_id == user_id
     ).first()
     
     if not record:
@@ -185,10 +183,9 @@ def get_history(
     twin_id: str,
     limit: int = 20, 
     db: Session = Depends(get_db),
-    current_user: UserDB = Depends(get_current_user)
+    user_id: int = Depends(get_user_id_for_read)
 ):
     """Get the last N NLQ query history records."""
-    user_id = current_user.id
     records = crud.get_query_history(db, user_id, limit)
     return [
         {
@@ -207,11 +204,11 @@ async def get_suggestions(
     domain: str = None,
     twin_id: str = "default",
     db: Session = Depends(get_db),
-    current_user: UserDB = Depends(get_current_user)
+    user_id: int = Depends(get_user_id_for_read)
 ):
     """Return generic predefined NLQ suggestions based on the twin's domain."""
     if not domain:
-        layout = crud.get_layout(db, current_user.id, twin_id)
+        layout = crud.get_layout(db, user_id, twin_id)
         domain = layout.domain if layout and layout.domain else "factory"
         
     domain = domain.lower()

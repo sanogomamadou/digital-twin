@@ -126,6 +126,7 @@ async def startup():
         from db.database import engine
         with engine.begin() as conn:
             conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'user';"))
+            conn.execute(text("ALTER TABLE share_links ADD COLUMN IF NOT EXISTS user_id INTEGER;"))
     except Exception as e:
         logger.warning(f"Auto-migration skipped: {e}")
 

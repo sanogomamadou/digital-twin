@@ -56,7 +56,7 @@ export default function AdminLLMOps() {
                             style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-0)', outline: 'none' }}
                         >
                             <option value="llama3-70b-8192">Llama 3 70B (Groq)</option>
-                            <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Groq)</option>
+                            <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Groq)</option>
                             <option value="llama3-8b-8192">Llama 3 8B (Groq)</option>
                             <option value="mixtral-8x7b-32768">Mixtral 8x7B (Groq)</option>
                             <option value="gpt-4o">GPT-4o (OpenAI)</option>

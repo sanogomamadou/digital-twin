@@ -117,11 +117,13 @@ async def run_nlq_agent_stream(
         trace_id_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, f"query_{db_query_id}")
         config = {"recursion_limit": 10, "run_id": trace_id_uuid}
         
-        # Inject Langfuse callback for full Graph tracing
-        from services.llm_service import get_langfuse_callback
+        # Inject Langfuse callback and Metrics callback for full Graph tracing
+        from services.llm_service import get_langfuse_callback, AgentMetricsCallbackHandler
+        callbacks = [AgentMetricsCallbackHandler(trace_id_uuid)]
         lf_cb = get_langfuse_callback()
         if lf_cb:
-            config["callbacks"] = [lf_cb]
+            callbacks.append(lf_cb)
+        config["callbacks"] = callbacks
             
         yield f'data: ' + json.dumps({"type": "thought", "content": "Contacting Groq LLM..."}) + '\n\n'
         await asyncio.sleep(0.05)

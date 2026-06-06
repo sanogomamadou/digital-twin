@@ -53,18 +53,11 @@ class AgentMetricsCallbackHandler(BaseCallbackHandler):
         except Exception as e:
             print(f"[Metrics] Failed to save metric: {e}")
 
-_langfuse_cb_cache = None
-
 def get_langfuse_callback():
-    global _langfuse_cb_cache
-    if _langfuse_cb_cache is not None:
-        return _langfuse_cb_cache
-        
     try:
         if os.getenv("LANGFUSE_SECRET_KEY") and os.getenv("LANGFUSE_PUBLIC_KEY"):
             from langfuse.langchain import CallbackHandler
-            _langfuse_cb_cache = CallbackHandler()
-            return _langfuse_cb_cache
+            return CallbackHandler()
     except Exception as e:
         print(f"[WARNING] Langfuse initialization failed: {e}")
     return None
@@ -114,11 +107,6 @@ def _build_llm_from_db():
                 
         model_name = config.model
         temp = config.temperature
-        
-        callbacks = [AgentMetricsCallbackHandler("db_trace")]
-        lf_cb = get_langfuse_callback()
-        if lf_cb:
-            callbacks.append(lf_cb)
             
         # Route to correct LLM provider
         is_openai = "gpt" in model_name.lower() or "o1" in model_name.lower() or "o3" in model_name.lower()
@@ -135,7 +123,6 @@ def _build_llm_from_db():
                     api_key=key,
                     model=model_name,
                     temperature=temp,
-                    callbacks=callbacks,
                     max_retries=1
                 )
             elif is_anthropic:
@@ -147,7 +134,6 @@ def _build_llm_from_db():
                     api_key=key,
                     model_name=model_name,
                     temperature=temp,
-                    callbacks=callbacks,
                     max_retries=1
                 )
             elif is_google:
@@ -158,15 +144,13 @@ def _build_llm_from_db():
                 return ChatGoogleGenerativeAI(
                     google_api_key=key,
                     model=model_name,
-                    temperature=temp,
-                    callbacks=callbacks
+                    temperature=temp
                 )
             else:
                 return ChatGroq(
                     api_key=key,
                     model=model_name,
                     temperature=temp,
-                    callbacks=callbacks,
                     max_retries=1
                 )
 

@@ -62,7 +62,18 @@ async def run_chart_agent(prompt: str, data: list[dict]) -> ChartConfig:
     ]
     
     try:
-        result = structured_llm.invoke(messages)
+        from services.llm_service import get_langfuse_callback, AgentMetricsCallbackHandler
+        import uuid
+        trace_id_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, "chart_agent")
+        callbacks = [AgentMetricsCallbackHandler(trace_id_uuid)]
+        lf_cb = get_langfuse_callback()
+        if lf_cb:
+            callbacks.append(lf_cb)
+            
+        result = structured_llm.invoke(messages, config={"callbacks": callbacks})
+        if lf_cb:
+            lf_cb.flush()
+            
         return ChartConfig(
             chartType=result.chartType,
             title=result.title,

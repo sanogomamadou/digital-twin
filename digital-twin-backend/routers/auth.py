@@ -44,12 +44,13 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserDB:
-    token = request.cookies.get("access_token")
+    token = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        
     if not token:
-        # Fallback to header for programmatic clients (e.g., automated scripts)
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
+        token = request.cookies.get("access_token")
             
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -83,7 +84,14 @@ def require_admin(current_user: UserDB = Depends(get_current_user)) -> UserDB:
 
 def get_user_id_for_read(request: Request) -> int:
     """Dependency that extracts user_id from either access_token or share_token for read-only routes."""
-    token = request.cookies.get("access_token")
+    token = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        
+    if not token:
+        token = request.cookies.get("access_token")
+        
     share_token = request.cookies.get("share_token")
     
     user_id = None

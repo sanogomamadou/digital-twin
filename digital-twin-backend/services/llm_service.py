@@ -56,6 +56,8 @@ class AgentMetricsCallbackHandler(BaseCallbackHandler):
 def get_langfuse_callback():
     try:
         if os.getenv("LANGFUSE_SECRET_KEY") and os.getenv("LANGFUSE_PUBLIC_KEY"):
+            # Set timeout to 30 seconds to prevent ReadTimeout when sending large LangGraph traces
+            os.environ["LANGFUSE_TIMEOUT"] = "30"
             from langfuse.langchain import CallbackHandler
             return CallbackHandler()
     except Exception as e:

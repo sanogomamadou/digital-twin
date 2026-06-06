@@ -176,8 +176,6 @@ async def run_nlq_agent_stream(
             
     finally:
         current_records_var.reset(token)
-        if lf_cb:
-            lf_cb.flush()
 
     # 5. Build response
     answer = llm_result.get("answer", "Analysis complete.")

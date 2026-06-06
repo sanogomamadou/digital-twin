@@ -71,8 +71,6 @@ async def run_chart_agent(prompt: str, data: list[dict]) -> ChartConfig:
             callbacks.append(lf_cb)
             
         result = structured_llm.invoke(messages, config={"callbacks": callbacks})
-        if lf_cb:
-            lf_cb.flush()
             
         return ChartConfig(
             chartType=result.chartType,

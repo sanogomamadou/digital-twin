@@ -101,3 +101,10 @@ async def run_report_agent(twin_data: dict, records: list) -> dict:
             return mock_report_agent(data_json)
     finally:
         current_records_var.reset(token)
+        import os
+        if os.getenv("LANGFUSE_SECRET_KEY") and os.getenv("LANGFUSE_PUBLIC_KEY"):
+            try:
+                from langfuse import Langfuse
+                Langfuse().flush()
+            except Exception as e:
+                pass

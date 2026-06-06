@@ -71,6 +71,14 @@ async def run_chart_agent(prompt: str, data: list[dict]) -> ChartConfig:
             callbacks.append(lf_cb)
             
         result = structured_llm.invoke(messages, config={"callbacks": callbacks})
+        
+        import os
+        if os.getenv("LANGFUSE_SECRET_KEY") and os.getenv("LANGFUSE_PUBLIC_KEY"):
+            try:
+                from langfuse import Langfuse
+                Langfuse().flush()
+            except Exception as e:
+                pass
             
         return ChartConfig(
             chartType=result.chartType,

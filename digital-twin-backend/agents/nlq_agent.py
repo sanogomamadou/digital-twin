@@ -176,6 +176,13 @@ async def run_nlq_agent_stream(
             
     finally:
         current_records_var.reset(token)
+        import os
+        if os.getenv("LANGFUSE_SECRET_KEY") and os.getenv("LANGFUSE_PUBLIC_KEY"):
+            try:
+                from langfuse import Langfuse
+                Langfuse().flush()
+            except Exception as e:
+                print(f"[Langfuse] Flush failed: {e}")
 
     # 5. Build response
     answer = llm_result.get("answer", "Analysis complete.")

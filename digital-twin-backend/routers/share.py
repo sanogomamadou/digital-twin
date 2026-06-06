@@ -145,4 +145,4 @@ def verify_share_link(share_id: str, verify_data: ShareLinkVerify, response: Res
         max_age=3600*24
     )
     
-    return {"success": True, "twin_id": db_link.twin_id, "state": schema.model_dump()}
+    return {"success": True, "twin_id": db_link.twin_id, "state": schema.model_dump(), "share_token": share_token}

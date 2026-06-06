@@ -69,6 +69,9 @@ export default function SharedTwinView({ shareId }) {
             const res = await verifyShareLink(shareId, pwToUse);
             if (res && res.success && res.twin_id && res.state) {
                 sessionStorage.setItem(`share_pw_${shareId}`, pwToUse);
+                if (res.share_token) {
+                    sessionStorage.setItem('share_token', res.share_token);
+                }
                 await handleLoadTwin(res.twin_id, res.state);
             }
         } catch (e) {

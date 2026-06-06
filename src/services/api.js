@@ -9,9 +9,12 @@ import useAuthStore from '../store/useAuthStore';
 
 async function apiFetch(path, options = {}) {
     const token = useAuthStore.getState().token;
+    const shareToken = sessionStorage.getItem('share_token');
+    const authHeaderValue = token ? `Bearer ${token}` : (shareToken ? `Bearer ${shareToken}` : null);
+    
     const headers = {
         'Content-Type': 'application/json',
-        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(authHeaderValue ? { 'Authorization': authHeaderValue } : {}),
         ...(options.headers || {}),
     };
 
@@ -156,7 +159,14 @@ export async function pushRealtimeKpi(componentId, kpiName, value, unit = '') {
 // ─── Analytics API ────────────────────────────────────────────────────────────
 
 export async function nlqQuery(twinId, question, { componentId, timeRange = '24h', history = [] } = {}, onThought = null) {
-    const headers = { 'Content-Type': 'application/json' };
+    const token = useAuthStore.getState().token;
+    const shareToken = sessionStorage.getItem('share_token');
+    const authHeaderValue = token ? `Bearer ${token}` : (shareToken ? `Bearer ${shareToken}` : null);
+    
+    const headers = { 
+        'Content-Type': 'application/json',
+        ...(authHeaderValue ? { 'Authorization': authHeaderValue } : {})
+    };
 
     const res = await fetch(`${BASE_URL}/analytics/query`, {
         method: 'POST',

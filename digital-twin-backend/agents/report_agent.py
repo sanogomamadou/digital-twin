@@ -82,6 +82,10 @@ async def run_report_agent(twin_data: dict, records: list) -> dict:
         
         try:
             config = {"configurable": {"thread_id": "global_session"}, "recursion_limit": 10}
+            from services.llm_service import get_langfuse_callback
+            lf_cb = get_langfuse_callback()
+            if lf_cb:
+                config["callbacks"] = [lf_cb]
             result = await app.ainvoke(inputs, config=config)
             final_message = result["messages"][-1].content
             parsed = extract_json_from_text(final_message)

@@ -97,3 +97,7 @@ async def run_report_agent(twin_data: dict, records: list) -> dict:
             return mock_report_agent(data_json)
     finally:
         current_records_var.reset(token)
+        from services.llm_service import get_langfuse_callback
+        lf_cb = get_langfuse_callback()
+        if lf_cb:
+            lf_cb.flush()

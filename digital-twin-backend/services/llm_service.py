@@ -53,11 +53,18 @@ class AgentMetricsCallbackHandler(BaseCallbackHandler):
         except Exception as e:
             print(f"[Metrics] Failed to save metric: {e}")
 
+_langfuse_cb_cache = None
+
 def get_langfuse_callback():
+    global _langfuse_cb_cache
+    if _langfuse_cb_cache is not None:
+        return _langfuse_cb_cache
+        
     try:
         if os.getenv("LANGFUSE_SECRET_KEY") and os.getenv("LANGFUSE_PUBLIC_KEY"):
             from langfuse.langchain import CallbackHandler
-            return CallbackHandler()
+            _langfuse_cb_cache = CallbackHandler()
+            return _langfuse_cb_cache
     except Exception as e:
         print(f"[WARNING] Langfuse initialization failed: {e}")
     return None

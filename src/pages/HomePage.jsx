@@ -47,10 +47,19 @@ function ConfirmModal({ twin, onConfirm, onCancel }) {
     );
 }
 
-function TwinCard({ twin, onLoad, onEdit, onDelete }) {
+function TwinCard({ twin, onLoad, onEdit, onDelete, onRename }) {
     const [hovered, setHovered] = useState(false);
+    const [isRenaming, setIsRenaming] = useState(false);
+    const [editName, setEditName] = useState(twin.name);
     const color = DOMAIN_COLORS[twin.domain] || '#4865f2';
     const updatedAt = twin.updatedAt ? new Date(twin.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+    const handleRenameSubmit = async () => {
+        if (editName && editName !== twin.name) {
+            await onRename(twin.id, editName);
+        }
+        setIsRenaming(false);
+    };
 
     return (
         <div
@@ -89,8 +98,38 @@ function TwinCard({ twin, onLoad, onEdit, onDelete }) {
                 </div>
 
                 {/* Name */}
-                <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-0)', marginBottom: '6px', lineHeight: 1.3 }}>
-                    {twin.name}
+                <div style={{ marginBottom: '6px', minHeight: '20px' }}>
+                    {isRenaming ? (
+                        <input
+                            autoFocus
+                            value={editName}
+                            onChange={e => setEditName(e.target.value)}
+                            onBlur={handleRenameSubmit}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') handleRenameSubmit();
+                                if (e.key === 'Escape') { setEditName(twin.name); setIsRenaming(false); }
+                            }}
+                            style={{
+                                fontSize: '15px', fontWeight: 700, color: 'var(--text-0)',
+                                background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)',
+                                borderRadius: '4px', padding: '2px 6px', width: '100%', outline: 'none',
+                                boxSizing: 'border-box'
+                            }}
+                        />
+                    ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-0)', lineHeight: 1.3, wordBreak: 'break-word', paddingRight: '8px' }}>
+                                {twin.name}
+                            </div>
+                            <button
+                                onClick={() => setIsRenaming(true)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-2)', padding: 0, flexShrink: 0 }}
+                                title="Rename twin"
+                            >
+                                <Pencil size={12} />
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Metadata */}
@@ -159,7 +198,7 @@ function TwinCard({ twin, onLoad, onEdit, onDelete }) {
 }
 
 export default function HomePage() {
-    const { setStep, loadDemo, twins, fetchTwins, loadTwinFromDb, deleteTwinFromDb, shareLinks, fetchShareLinks, deleteShareLink } = useTwinStore();
+    const { setStep, loadDemo, twins, fetchTwins, loadTwinFromDb, deleteTwinFromDb, renameTwinDb, shareLinks, fetchShareLinks, deleteShareLink } = useTwinStore();
     const [loading, setLoading] = useState(false);
     const [toDelete, setToDelete] = useState(null);
     const [actionLoading, setActionLoading] = useState(null);
@@ -201,6 +240,17 @@ export default function HomePage() {
             setError('Failed to delete twin.');
         } finally {
             setToDelete(null);
+        }
+    };
+
+    const handleRename = async (id, newName) => {
+        setActionLoading(id);
+        try {
+            await renameTwinDb(id, newName);
+        } catch {
+            setError('Failed to rename twin.');
+        } finally {
+            setActionLoading(null);
         }
     };
 
@@ -311,6 +361,7 @@ export default function HomePage() {
                                     onLoad={handleLoad}
                                     onEdit={handleEdit}
                                     onDelete={setToDelete}
+                                    onRename={handleRename}
                                 />
                             </div>
                         ))}

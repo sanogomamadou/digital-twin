@@ -85,3 +85,17 @@ def delete_twin(
     if not deleted:
         raise HTTPException(status_code=404, detail="Twin not found")
     return {"deleted": twin_id}
+
+
+@router.patch("/{twin_id}/name", response_model=TwinSummary)
+def rename_twin(
+    twin_id: str, 
+    req: __import__('models.schemas', fromlist=['TwinRenameRequest']).TwinRenameRequest, 
+    db: Session = Depends(get_db),
+    current_user: UserDB = Depends(get_current_user)
+):
+    """Rename a digital twin."""
+    updated_layout = crud.rename_twin(db, current_user.id, twin_id, req.name)
+    if not updated_layout:
+        raise HTTPException(status_code=404, detail="Twin not found")
+    return _to_summary(updated_layout)

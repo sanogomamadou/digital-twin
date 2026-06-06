@@ -40,6 +40,17 @@ def delete_twin(db: Session, user_id: int, twin_id: str) -> bool:
     return True
 
 
+def rename_twin(db: Session, user_id: int, twin_id: str, new_name: str) -> LayoutStateDB | None:
+    twin = db.query(LayoutStateDB).filter(LayoutStateDB.id == twin_id, LayoutStateDB.user_id == user_id).first()
+    if twin:
+        twin.name = new_name
+        twin.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(twin)
+        return twin
+    return None
+
+
 def save_layout(db: Session, user_id: int, state: LayoutStateSchema) -> LayoutStateDB:
     if state.id == "default":
         state.id = f"default_{user_id}"

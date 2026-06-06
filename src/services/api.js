@@ -263,6 +263,13 @@ export async function deleteTwin(twinId) {
     return apiFetch(`/twins/${twinId}`, { method: 'DELETE' });
 }
 
+export async function renameTwin(twinId, newName) {
+    return apiFetch(`/twins/${twinId}/name`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: newName }),
+    });
+}
+
 // ─── Share Link API ───────────────────────────────────────────────────────────
 
 export async function createShareLink(data) {

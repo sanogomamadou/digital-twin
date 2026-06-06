@@ -90,6 +90,9 @@ class TwinSummary(BaseModel):
     createdAt: Optional[datetime] = None
     updatedAt: Optional[datetime] = None
 
+class TwinRenameRequest(BaseModel):
+    name: str
+
 class LayoutPromptRequest(BaseModel):
     prompt: str = Field(..., description="Natural language instruction to modify layout")
     currentState: LayoutStateSchema

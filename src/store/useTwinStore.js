@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { listTwins, getTwin, saveTwin as apiSaveTwin, deleteTwin as apiDeleteTwin, listShareLinks, createShareLink, updateShareLink, deleteShareLink, generateReport } from '../services/api';
+import { listTwins, getTwin, saveTwin as apiSaveTwin, deleteTwin as apiDeleteTwin, renameTwin as apiRenameTwin, listShareLinks, createShareLink, updateShareLink, deleteShareLink, generateReport } from '../services/api';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
@@ -801,6 +801,20 @@ const useTwinStore = create((set, get) => ({
             }));
         } catch (e) {
             console.error('Failed to delete twin:', e.message);
+            throw e;
+        }
+    },
+
+    renameTwinDb: async (twinId, newName) => {
+        try {
+            const updated = await apiRenameTwin(twinId, newName);
+            set(s => ({
+                twins: s.twins.map(t => t.id === twinId ? updated : t),
+                twinName: s.activeTwinId === twinId ? newName : s.twinName,
+            }));
+            return updated;
+        } catch (e) {
+            console.error('Failed to rename twin:', e.message);
             throw e;
         }
     },

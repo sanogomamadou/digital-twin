@@ -174,7 +174,7 @@ export default function FormStep() {
                                     </div>
                                     <div>
                                         <div style={{ fontSize: '13px', color: 'var(--text-2)', marginBottom: '4px', fontWeight: 500 }}>Resolution</div>
-                                        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-0)' }}>6m² / cell</div>
+                                        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-0)' }}>{cellSize * cellSize}m² / cell</div>
                                     </div>
                                 </div>
                             </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, ArrowLeft, Database, Plus, Trash2, Zap, Palette, Focus } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Database, Plus, Trash2, Sparkles, Loader2, Rocket, AlertCircle, AlertOctagon, Wand2 } from 'lucide-react';
 import useTwinStore from '../store/useTwinStore';
 import { proposeKpis, getTelemetrySchema, saveTelemetryAssignments } from '../services/api';
 
@@ -138,14 +138,14 @@ export default function KpiStep() {
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
                 {/* ── LEFT PANEL: Database Columns ── */}
-                <div style={{ width: '300px', flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'rgba(255,255,255,0.9)', overflow: 'hidden' }}>
+                <div style={{ width: '300px', flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg-1)', overflow: 'hidden' }}>
                     <div style={{ padding: '20px 18px', borderBottom: '1px solid var(--border)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                             <Database size={15} color="var(--accent)" />
                             <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.04em' }}>PostgreSQL</span>
                         </div>
                         <p style={{ fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.6, margin: 0 }}>
-                            Live schema for <strong style={{color: '#fff'}}>{selectedDomain}_data</strong> table. Use these variable names in your KPI formulas.
+                            Live schema for <strong style={{color: 'var(--text-0)'}}>{selectedDomain}_data</strong> table. Use these variable names in your KPI formulas.
                         </p>
                     </div>
 
@@ -167,8 +167,8 @@ export default function KpiStep() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>KPI Formula Engine</h2>
                         <div style={{ display: 'flex', gap: '10px' }}>
-                            <button onClick={handleSuggestKpis} disabled={aiLoading || columns.length === 0} style={{ padding: '8px 14px', borderRadius: '8px', background: 'linear-gradient(135deg,#4865f2,#f4723e)', color: '#fff', border: 'none', cursor: (aiLoading || columns.length === 0) ? 'not-allowed' : 'pointer', opacity: (aiLoading || columns.length === 0) ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700 }}>
-                                {aiLoading ? '🔄 Thinking...' : '✨ AI Suggestions'}
+                            <button onClick={handleSuggestKpis} disabled={aiLoading || columns.length === 0} style={{ padding: '8px 14px', borderRadius: '8px', background: 'linear-gradient(135deg, var(--accent), var(--orange))', color: '#fff', border: 'none', cursor: (aiLoading || columns.length === 0) ? 'not-allowed' : 'pointer', opacity: (aiLoading || columns.length === 0) ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700 }}>
+                                {aiLoading ? <><Loader2 size={14} className="spin" /> Thinking...</> : <><Sparkles size={14} /> AI Suggestions</>}
                             </button>
                             <button onClick={addKpi} style={{ padding: '8px 14px', borderRadius: '8px', background: 'rgba(72,101,242,0.1)', color: 'var(--accent)', border: '1px solid rgba(72,101,242,0.3)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600 }}>
                                 <Plus size={14} /> Add New KPI
@@ -201,22 +201,22 @@ export default function KpiStep() {
                                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 1fr) minmax(150px, 1fr) minmax(250px, 2fr) 80px', gap: '12px' }}>
                                     <div>
                                         <label style={{ fontSize: '10px', color: 'var(--text-2)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>Target Component</label>
-                                        <select value={kpi.component_id} onChange={e => updateKpi(kpi.kpi_id, 'component_id', e.target.value)} style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '12px', outline: 'none' }}>
+                                        <select value={kpi.component_id} onChange={e => updateKpi(kpi.kpi_id, 'component_id', e.target.value)} style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: 'var(--text-0)', fontSize: '12px', outline: 'none' }}>
                                             <option value="">-- Select --</option>
                                             {components.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <label style={{ fontSize: '10px', color: 'var(--text-2)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>Label</label>
-                                        <input value={kpi.kpi_name} onChange={e => updateKpi(kpi.kpi_id, 'kpi_name', e.target.value)} placeholder="e.g. Total Energy" style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '12px', outline: 'none' }} />
+                                        <input value={kpi.kpi_name} onChange={e => updateKpi(kpi.kpi_id, 'kpi_name', e.target.value)} placeholder="e.g. Total Energy" style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: 'var(--text-0)', fontSize: '12px', outline: 'none' }} />
                                     </div>
                                     <div>
                                         <label style={{ fontSize: '10px', color: 'var(--accent)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>Formula (Math)</label>
-                                        <input value={kpi.formula} onChange={e => updateKpi(kpi.kpi_id, 'formula', e.target.value)} placeholder="e.g. temp_1 + temp_2 * 1.5" style={{ width: '100%', background: 'rgba(72,101,242,0.05)', border: '1px solid rgba(72,101,242,0.3)', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '12px', fontFamily: 'monospace', outline: 'none' }} />
+                                        <input value={kpi.formula} onChange={e => updateKpi(kpi.kpi_id, 'formula', e.target.value)} placeholder="e.g. temp_1 + temp_2 * 1.5" style={{ width: '100%', background: 'rgba(72,101,242,0.05)', border: '1px solid rgba(72,101,242,0.3)', borderRadius: '6px', padding: '8px', color: 'var(--text-0)', fontSize: '12px', fontFamily: 'monospace', outline: 'none' }} />
                                     </div>
                                     <div>
                                         <label style={{ fontSize: '10px', color: 'var(--text-2)', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>Unit</label>
-                                        <input value={kpi.unit} onChange={e => updateKpi(kpi.kpi_id, 'unit', e.target.value)} placeholder="kWh" style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '12px', outline: 'none' }} />
+                                        <input value={kpi.unit} onChange={e => updateKpi(kpi.kpi_id, 'unit', e.target.value)} placeholder="kWh" style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: 'var(--text-0)', fontSize: '12px', outline: 'none' }} />
                                     </div>
                                 </div>
 
@@ -226,22 +226,22 @@ export default function KpiStep() {
                                         <select value={kpi.rules.direction || 'asc'} onChange={e => {
                                             const newRules = { ...kpi.rules, direction: e.target.value };
                                             updateKpi(kpi.kpi_id, 'rules', newRules);
-                                        }} style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '12px', outline: 'none' }}>
+                                        }} style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px', color: 'var(--text-0)', fontSize: '12px', outline: 'none' }}>
                                             <option value="asc">Ascending (≥)</option>
                                             <option value="desc">Descending (≤)</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: '10px', color: '#f59e0b', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>🟡 Warn {kpi.rules.direction === 'desc' ? '≤' : '≥'}</label>
-                                        <input type="number" value={kpi.rules.orange?.[0] ?? ''} onChange={e => updateRule(kpi.kpi_id, 'orange', e.target.value)} placeholder="Threshold" style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '12px', outline: 'none' }} />
+                                        <label style={{ fontSize: '10px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px', textTransform: 'uppercase' }}><AlertCircle size={12} /> Warn {kpi.rules.direction === 'desc' ? '≤' : '≥'}</label>
+                                        <input type="number" value={kpi.rules.orange?.[0] ?? ''} onChange={e => updateRule(kpi.kpi_id, 'orange', e.target.value)} placeholder="Threshold" style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px', padding: '8px', color: 'var(--text-0)', fontSize: '12px', outline: 'none' }} />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: '10px', color: '#ef4444', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>🔴 Critical {kpi.rules.direction === 'desc' ? '≤' : '≥'}</label>
-                                        <input type="number" value={kpi.rules.red?.[0] ?? ''} onChange={e => updateRule(kpi.kpi_id, 'red', e.target.value)} placeholder="Threshold" style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '12px', outline: 'none' }} />
+                                        <label style={{ fontSize: '10px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px', textTransform: 'uppercase' }}><AlertOctagon size={12} /> Critical {kpi.rules.direction === 'desc' ? '≤' : '≥'}</label>
+                                        <input type="number" value={kpi.rules.red?.[0] ?? ''} onChange={e => updateRule(kpi.kpi_id, 'red', e.target.value)} placeholder="Threshold" style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', padding: '8px', color: 'var(--text-0)', fontSize: '12px', outline: 'none' }} />
                                     </div>
                                     <div>
-                                        <label style={{ fontSize: '10px', color: '#10d98d', display: 'block', marginBottom: '4px', textTransform: 'uppercase' }}>✨ Visual Interaction</label>
-                                        <select value={kpi.interaction} onChange={e => updateKpi(kpi.kpi_id, 'interaction', e.target.value)} style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid rgba(16,217,141,0.3)', borderRadius: '6px', padding: '8px', color: '#fff', fontSize: '12px', outline: 'none' }}>
+                                        <label style={{ fontSize: '10px', color: '#10d98d', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px', textTransform: 'uppercase' }}><Wand2 size={12} /> Visual Interaction</label>
+                                        <select value={kpi.interaction} onChange={e => updateKpi(kpi.kpi_id, 'interaction', e.target.value)} style={{ width: '100%', background: 'var(--bg-2)', border: '1px solid rgba(16,217,141,0.3)', borderRadius: '6px', padding: '8px', color: 'var(--text-0)', fontSize: '12px', outline: 'none' }}>
                                             <option value="transition">Solid Color Transition</option>
                                             <option value="pulse">Luminous Pulse</option>
                                             <option value="glow">Outline Glow</option>
@@ -255,7 +255,7 @@ export default function KpiStep() {
             </div>
 
             {/* ── FOOTER ── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(10px)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-1)', flexShrink: 0 }}>
                 <button className="btn btn-ghost" onClick={() => setStep(3)}>
                     <ArrowLeft size={16} /> Back
                 </button>
@@ -268,8 +268,8 @@ export default function KpiStep() {
                         className="btn btn-primary btn-lg"
                         onClick={handleLaunch}
                         disabled={loading || assignments.length === 0}
-                        style={{ opacity: (loading || assignments.length === 0) ? 0.5 : 1 }}>
-                        {loading ? '⏳ Deploying Rules…' : `🚀 Compile & Launch System`}
+                        style={{ opacity: (loading || assignments.length === 0) ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {loading ? <><Loader2 size={16} className="spin" /> Deploying Rules…</> : <><Rocket size={16} /> Compile & Launch System</>}
                         {!loading && <ChevronRight size={16} />}
                     </button>
                 </div>

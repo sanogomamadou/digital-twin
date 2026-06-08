@@ -2,7 +2,7 @@ import { useState, Suspense } from 'react';
 import useTwinStore from '../store/useTwinStore';
 import Scene3D from '../components/Scene3D';
 import Grid2D from '../components/Grid2D';
-import { ChevronRight, ArrowLeft, Link2, Zap, Wifi, Trash2 } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Link2, Zap, Wifi, Trash2, Settings, Plane, Package, MousePointerClick } from 'lucide-react';
 
 const VIEWS = ['2D Grid', '3D Preview'];
 
@@ -15,9 +15,9 @@ export default function ConnectionsStep() {
     const [view, setView] = useState('2D Grid');
 
     const DOMAIN_LINK_TYPES = {
-        factory: { label: 'Production Flow', desc: 'Parts pass from machine A to B', icon: '⚙️' },
-        airport: { label: 'Passenger Flow', desc: 'Terminal → Gate → Runway', icon: '✈️' },
-        warehouse: { label: 'Picking Route', desc: 'Reception → Rack → Shipping', icon: '📦' },
+        factory: { label: 'Production Flow', desc: 'Parts pass from machine A to B', icon: <Settings size={14} /> },
+        airport: { label: 'Passenger Flow', desc: 'Terminal → Gate → Runway', icon: <Plane size={14} /> },
+        warehouse: { label: 'Picking Route', desc: 'Reception → Rack → Shipping', icon: <Package size={14} /> },
     };
     const linkType = DOMAIN_LINK_TYPES[selectedDomain] || DOMAIN_LINK_TYPES.factory;
 
@@ -32,7 +32,7 @@ export default function ConnectionsStep() {
                 <div style={{
                     borderRight: '1px solid var(--border)',
                     display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                    background: 'rgba(255,255,255,0.85)',
+                    background: 'var(--bg-1)',
                 }}>
                     <div style={{ padding: '20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -164,9 +164,9 @@ export default function ConnectionsStep() {
                 {/* Right — View */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
                     {/* View toggle */}
-                    <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid var(--border)', borderRadius: '7px', padding: '2px' }}>
+                    <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', gap: '4px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px', padding: '3px' }}>
                         {VIEWS.map(v => (
-                            <button key={v} onClick={() => setView(v)} style={{ padding: '4px 10px', borderRadius: '5px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600, transition: 'all 0.15s', background: view === v ? 'var(--accent)' : 'transparent', color: view === v ? '#fff' : 'var(--text-2)' }}>{v}</button>
+                            <button key={v} onClick={() => setView(v)} style={{ padding: '4px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600, transition: 'all 0.15s', background: view === v ? 'var(--bg-1)' : 'transparent', color: view === v ? 'var(--text-0)' : 'var(--text-2)', boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{v}</button>
                         ))}
                     </div>
 
@@ -181,13 +181,14 @@ export default function ConnectionsStep() {
                     <div style={{
                         position: 'absolute', bottom: '16px', left: '50%', transform: 'translateX(-50%)',
                         padding: '8px 16px', borderRadius: '100px',
-                        background: 'rgba(255,255,255,0.8)', border: '1px solid var(--border)',
-                        backdropFilter: 'blur(10px)',
-                        fontSize: '12px', color: 'var(--text-1)',
+                        background: 'var(--bg-1)', border: '1px solid var(--border)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                        fontSize: '12px', color: 'var(--text-1)', fontWeight: 500,
                         zIndex: 10,
-                        pointerEvents: 'none'
+                        pointerEvents: 'none',
+                        display: 'flex', alignItems: 'center', gap: '8px'
                     }}>
-                        {view === '2D Grid' ? '🖱️ Drag from one component to another to link them' : '🔗 Connections rendered as animated tubes — hover for details'}
+                        {view === '2D Grid' ? <><MousePointerClick size={14} color="var(--accent)" /> Drag from one component to another to link them</> : <><Link2 size={14} color="var(--accent)" /> Connections rendered as animated tubes — hover for details</>}
                     </div>
                 </div>
             </div>
@@ -195,8 +196,7 @@ export default function ConnectionsStep() {
             {/* Footer nav */}
             <div style={{
                 display: 'flex', justifyContent: 'space-between', padding: '12px 20px',
-                borderTop: '1px solid var(--border)', background: 'rgba(255,255,255,0.8)',
-                backdropFilter: 'blur(10px)', flexShrink: 0,
+                borderTop: '1px solid var(--border)', background: 'var(--bg-1)', flexShrink: 0,
             }}>
                 <button className="btn btn-ghost" onClick={() => setStep(2)}>
                     <ArrowLeft size={16} /> Back

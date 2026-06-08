@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAdminUsers, updateAdminUserRole, deleteAdminUser, resetAdminUserPassword, createAdminUser } from '../../services/api';
-import { Trash2, Shield, ShieldAlert, KeyRound, UserPlus } from 'lucide-react';
+import { Trash2, Shield, ShieldAlert, KeyRound, UserPlus, Search } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 
 export default function AdminUsers() {
@@ -72,124 +72,192 @@ export default function AdminUsers() {
         }
     };
 
-    if (loading) return <div>Loading users...</div>;
+    if (loading) {
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                <div className="spinner" style={{ width: '32px', height: '32px', border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%' }} />
+            </div>
+        );
+    }
 
     return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Users Management</h1>
-                <button onClick={() => setShowCreate(!showCreate)} style={{ ...actionBtnStyle, background: 'var(--accent)', color: 'white' }}>
-                    <UserPlus size={16} style={{ marginRight: '6px' }} /> Add User
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                    <h1 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-0)', marginBottom: '4px', letterSpacing: '-0.02em' }}>Users Management</h1>
+                    <p style={{ color: 'var(--text-2)', fontSize: '15px' }}>Manage platform access, roles, and security.</p>
+                </div>
+                <button 
+                    onClick={() => setShowCreate(!showCreate)} 
+                    className="btn btn-primary"
+                >
+                    <UserPlus size={16} /> 
+                    {showCreate ? 'Cancel' : 'Add User'}
                 </button>
             </div>
-            <p style={{ color: 'var(--text-2)', marginBottom: '32px' }}>Manage platform access, roles, and security.</p>
 
             {showCreate && (
-                <div style={{ background: 'var(--bg-1)', padding: '24px', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '24px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '16px' }}>Create New User</h3>
-                    <form onSubmit={handleCreateUser} style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-2)', marginBottom: '6px' }}>Username</label>
-                            <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} required style={inputStyle} />
+                <div className="animate-slide" style={{ 
+                    background: 'var(--bg-1)', 
+                    padding: '32px', 
+                    borderRadius: 'var(--r-xl)', 
+                    border: '1px solid var(--border)', 
+                    boxShadow: 'var(--shadow-sm)'
+                }}>
+                    <div style={{ marginBottom: '24px' }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-0)', marginBottom: '4px' }}>Create New User</h3>
+                        <p style={{ fontSize: '14px', color: 'var(--text-2)' }}>Add a new account to the platform.</p>
+                    </div>
+
+                    <form onSubmit={handleCreateUser} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', alignItems: 'end' }}>
+                        <div>
+                            <label className="label">Username</label>
+                            <input 
+                                type="text" 
+                                value={newUsername} 
+                                onChange={e => setNewUsername(e.target.value)} 
+                                required 
+                                className="input"
+                                placeholder="Enter username"
+                            />
                         </div>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-2)', marginBottom: '6px' }}>Password</label>
-                            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required style={inputStyle} />
+                        <div>
+                            <label className="label">Password</label>
+                            <input 
+                                type="password" 
+                                value={newPassword} 
+                                onChange={e => setNewPassword(e.target.value)} 
+                                required 
+                                className="input"
+                                placeholder="Secure password"
+                            />
                         </div>
-                        <div style={{ width: '150px' }}>
-                            <label style={{ display: 'block', fontSize: '13px', color: 'var(--text-2)', marginBottom: '6px' }}>Role</label>
-                            <select value={newRole} onChange={e => setNewRole(e.target.value)} style={inputStyle}>
+                        <div>
+                            <label className="label">Role</label>
+                            <select 
+                                value={newRole} 
+                                onChange={e => setNewRole(e.target.value)} 
+                                className="input"
+                                style={{ appearance: 'none', cursor: 'pointer' }}
+                            >
                                 <option value="user">User</option>
                                 <option value="admin">Admin</option>
                             </select>
                         </div>
-                        <button type="submit" style={{ ...actionBtnStyle, background: 'var(--accent)', color: 'white', padding: '10px 20px', height: '40px' }}>
-                            Create
-                        </button>
+                        <div>
+                            <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '42px', justifyContent: 'center' }}>
+                                Create Account
+                            </button>
+                        </div>
                     </form>
                 </div>
             )}
-            <p style={{ color: 'var(--text-2)', marginBottom: '32px' }}>Manage platform access, roles, and security.</p>
 
-            <div style={{ background: 'var(--bg-1)', borderRadius: '12px', border: '1px solid var(--border)', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                    <thead>
-                        <tr style={{ background: 'var(--bg-2)', borderBottom: '1px solid var(--border)' }}>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-2)', fontWeight: 600 }}>ID</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-2)', fontWeight: 600 }}>Username</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-2)', fontWeight: 600 }}>Role</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-2)', fontWeight: 600 }}>Created At</th>
-                            <th style={{ padding: '16px', fontSize: '13px', color: 'var(--text-2)', fontWeight: 600, textAlign: 'right' }}>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {users.map(u => (
-                            <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                <td style={{ padding: '16px', fontSize: '14px' }}>#{u.id}</td>
-                                <td style={{ padding: '16px', fontSize: '14px', fontWeight: 500 }}>
-                                    {u.username}
-                                    {u.id === currentUser?.id && <span style={{ marginLeft: '8px', fontSize: '11px', background: 'var(--accent)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>You</span>}
-                                </td>
-                                <td style={{ padding: '16px' }}>
-                                    <span style={{
-                                        display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                        background: u.role === 'admin' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                                        color: u.role === 'admin' ? '#10b981' : '#3b82f6',
-                                        padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 600
-                                    }}>
-                                        {u.role === 'admin' ? <Shield size={12} /> : <ShieldAlert size={12} />}
-                                        {u.role.toUpperCase()}
-                                    </span>
-                                </td>
-                                <td style={{ padding: '16px', fontSize: '13px', color: 'var(--text-2)' }}>
-                                    {new Date(u.created_at).toLocaleDateString()}
-                                </td>
-                                <td style={{ padding: '16px', textAlign: 'right' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                                        {u.role === 'user' ? (
-                                            <button onClick={() => handleRoleChange(u.id, 'admin')} style={actionBtnStyle}>
-                                                Promote to Admin
-                                            </button>
+            <div style={{ 
+                background: 'var(--bg-1)', 
+                borderRadius: 'var(--r-xl)', 
+                border: '1px solid var(--border)', 
+                overflow: 'hidden',
+                boxShadow: 'var(--shadow-sm)'
+            }}>
+                {/* Search/Filter Bar */}
+                <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '16px', background: 'var(--bg-0)' }}>
+                    <div style={{ position: 'relative', width: '300px' }}>
+                        <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-2)' }} />
+                        <input type="text" placeholder="Search users..." className="input" style={{ paddingLeft: '36px', height: '36px' }} />
+                    </div>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-1)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>User</th>
+                                <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-1)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Role</th>
+                                <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-1)', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Created At</th>
+                                <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: 600, color: 'var(--text-1)', letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'right' }}>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {users.map(u => (
+                                <tr key={u.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-3)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                    <td style={{ padding: '16px 24px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{ 
+                                                width: '36px', height: '36px', borderRadius: '50%', 
+                                                background: 'var(--bg-2)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontWeight: 600, color: 'var(--text-1)'
+                                            }}>
+                                                {u.username.substring(0, 2).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-0)' }}>
+                                                    {u.username}
+                                                </div>
+                                                <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>ID: #{u.id}</div>
+                                            </div>
+                                            {u.id === currentUser?.id && (
+                                                <span className="badge badge-blue" style={{ marginLeft: '8px' }}>You</span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '16px 24px' }}>
+                                        {u.role === 'admin' ? (
+                                            <span className="badge badge-green">
+                                                <Shield size={12} /> ADMIN
+                                            </span>
                                         ) : (
-                                            <button onClick={() => handleRoleChange(u.id, 'user')} style={actionBtnStyle} disabled={u.id === currentUser?.id}>
-                                                Demote to User
-                                            </button>
+                                            <span className="badge" style={{ background: 'var(--bg-2)' }}>
+                                                <ShieldAlert size={12} /> USER
+                                            </span>
                                         )}
-                                        <button onClick={() => handlePasswordReset(u.id)} style={actionBtnStyle} title="Reset Password">
-                                            <KeyRound size={16} />
-                                        </button>
-                                        <button onClick={() => handleDelete(u.id)} style={{ ...actionBtnStyle, color: 'var(--red)' }} disabled={u.id === currentUser?.id} title="Delete User">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                        {users.length === 0 && (
-                            <tr>
-                                <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-2)' }}>No users found.</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                                    </td>
+                                    <td style={{ padding: '16px 24px', fontSize: '14px', color: 'var(--text-1)' }}>
+                                        {new Date(u.created_at).toLocaleDateString()}
+                                    </td>
+                                    <td style={{ padding: '16px 24px', textAlign: 'right' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                            {u.role === 'user' ? (
+                                                <button onClick={() => handleRoleChange(u.id, 'admin')} className="btn btn-ghost btn-sm">
+                                                    Make Admin
+                                                </button>
+                                            ) : (
+                                                <button onClick={() => handleRoleChange(u.id, 'user')} className="btn btn-ghost btn-sm" disabled={u.id === currentUser?.id}>
+                                                    Demote
+                                                </button>
+                                            )}
+                                            <button onClick={() => handlePasswordReset(u.id)} className="btn btn-icon btn-ghost" title="Reset Password">
+                                                <KeyRound size={16} />
+                                            </button>
+                                            <button onClick={() => handleDelete(u.id)} className="btn btn-icon btn-danger" disabled={u.id === currentUser?.id} title="Delete User">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {users.length === 0 && (
+                                <tr>
+                                    <td colSpan={4} style={{ padding: '64px', textAlign: 'center' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                                            <div style={{ width: '48px', height: '48px', background: 'var(--bg-2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-2)' }}>
+                                                <Users size={24} />
+                                            </div>
+                                            <div>
+                                                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-0)', marginBottom: '4px' }}>No users found</h3>
+                                                <p style={{ color: 'var(--text-2)', fontSize: '14px' }}>Get started by creating a new user account.</p>
+                                            </div>
+                                            <button onClick={() => setShowCreate(true)} className="btn btn-ghost">
+                                                <UserPlus size={16} /> Add First User
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
 }
-
-const actionBtnStyle = {
-    background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '6px',
-    padding: '6px 12px', cursor: 'pointer', fontSize: '13px', fontWeight: 500, color: 'var(--text-1)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s'
-};
-
-const inputStyle = {
-    width: '100%',
-    padding: '8px 12px',
-    background: 'var(--bg-2)',
-    border: '1px solid var(--border)',
-    borderRadius: '6px',
-    color: 'var(--text-1)',
-    fontSize: '14px',
-    outline: 'none'
-};

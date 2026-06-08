@@ -1,70 +1,88 @@
 import { useState } from 'react';
-import { Users, Activity, Settings, ArrowLeft } from 'lucide-react';
+import { Users, Activity, Settings, ArrowLeft, Menu, X } from 'lucide-react';
 import AdminUsers from './AdminUsers';
 import AdminPerformance from './AdminPerformance';
 import AdminLLMOps from './AdminLLMOps';
 
 export default function AdminLayout() {
-    const [activeTab, setActiveTab] = useState('users');
+    const [activeTab, setActiveTab] = useState('performance');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const renderContent = () => {
         switch (activeTab) {
             case 'users': return <AdminUsers />;
             case 'performance': return <AdminPerformance />;
             case 'llmops': return <AdminLLMOps />;
-            default: return <AdminUsers />;
+            default: return <AdminPerformance />;
         }
     };
 
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setIsMobileMenuOpen(false);
+    };
+
     return (
-        <div style={{ display: 'flex', height: '100vh', width: '100vw', background: 'var(--bg-0)' }}>
+        <div className="admin-layout">
+            {/* Mobile Header */}
+            <div className="admin-mobile-header">
+                <div className="admin-mobile-logo-wrapper">
+                    <div className="admin-logo">
+                        A
+                    </div>
+                    <div className="admin-logo-text">Admin</div>
+                </div>
+                <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="btn btn-icon btn-ghost">
+                    {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                </button>
+            </div>
+
             {/* Sidebar */}
-            <div style={{
-                width: '260px', background: 'var(--bg-1)', borderRight: '1px solid var(--border)',
-                display: 'flex', flexDirection: 'column', padding: '20px'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '40px' }}>
-                    <div style={{
-                        width: '32px', height: '32px', borderRadius: '8px',
-                        background: 'linear-gradient(135deg, #10b981, #3b82f6)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: 'white', fontWeight: 'bold'
-                    }}>
+            <div className={`admin-sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
+                <div className="admin-sidebar-header">
+                    <div className="admin-logo-large">
                         A
                     </div>
                     <div>
-                        <div style={{ fontWeight: 700, fontSize: '16px' }}>Admin Dashboard</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>Superuser Access</div>
+                        <div className="admin-sidebar-title">Admin Deck</div>
+                        <div className="admin-sidebar-subtitle">Superuser Access</div>
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
-                    <TabButton icon={<Users size={18} />} label="Users Management" active={activeTab === 'users'} onClick={() => setActiveTab('users')} />
-                    <TabButton icon={<Activity size={18} />} label="Agent Performance" active={activeTab === 'performance'} onClick={() => setActiveTab('performance')} />
-                    <TabButton icon={<Settings size={18} />} label="LLM Ops" active={activeTab === 'llmops'} onClick={() => setActiveTab('llmops')} />
+                <div className="admin-tab-list">
+                    <TabButton icon={<Activity size={18} />} label="Agent Performance" active={activeTab === 'performance'} onClick={() => handleTabChange('performance')} />
+                    <TabButton icon={<Users size={18} />} label="Users Management" active={activeTab === 'users'} onClick={() => handleTabChange('users')} />
+                    <TabButton icon={<Settings size={18} />} label="LLM Ops" active={activeTab === 'llmops'} onClick={() => handleTabChange('llmops')} />
                 </div>
 
                 <button
                     onClick={() => window.location.href = '/'}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        padding: '10px', background: 'transparent', border: '1px solid var(--border)',
-                        borderRadius: '8px', cursor: 'pointer', color: 'var(--text-1)',
-                        justifyContent: 'center', transition: 'background 0.2s',
-                        marginTop: 'auto'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-2)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    className="btn btn-ghost admin-back-btn"
                 >
                     <ArrowLeft size={16} />
-                    Back to Application
+                    Back to Platform
                 </button>
             </div>
 
             {/* Main Content */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '40px' }}>
-                {renderContent()}
+            <div className="admin-content">
+                <div className="admin-content-inner">
+                    {renderContent()}
+                </div>
             </div>
+
+            {/* Mobile overlay */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="admin-overlay"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    style={{
+                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                        background: 'rgba(30, 41, 59, 0.5)', zIndex: 30,
+                        backdropFilter: 'blur(4px)'
+                    }}
+                />
+            )}
         </div>
     );
 }
@@ -73,16 +91,16 @@ function TabButton({ icon, label, active, onClick }) {
     return (
         <button
             onClick={onClick}
+            className={`admin-tab-btn ${active ? 'active' : ''}`}
             style={{
                 display: 'flex', alignItems: 'center', gap: '12px',
-                padding: '12px 16px', borderRadius: '8px', cursor: 'pointer',
-                background: active ? 'var(--accent)' : 'transparent',
-                color: active ? 'white' : 'var(--text-1)',
-                border: 'none', textAlign: 'left', fontWeight: active ? 600 : 500,
-                transition: 'all 0.2s'
+                padding: '10px 14px', borderRadius: '8px', cursor: 'pointer',
+                background: active ? 'var(--accent-dim)' : 'transparent',
+                color: active ? 'var(--accent)' : 'var(--text-1)',
+                border: active ? '1px solid var(--border)' : '1px solid transparent', 
+                textAlign: 'left', fontWeight: active ? 600 : 500,
+                transition: 'all 0.2s ease', fontSize: '14px'
             }}
-            onMouseEnter={e => !active && (e.currentTarget.style.background = 'var(--bg-2)')}
-            onMouseLeave={e => !active && (e.currentTarget.style.background = 'transparent')}
         >
             {icon}
             {label}

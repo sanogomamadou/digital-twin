@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import useTwinStore, { DOMAINS } from '../store/useTwinStore';
-import { Play, Layers, Sparkles, Eye, Pencil, Trash2, RefreshCw, AlertCircle, X, Share2, Copy, Search, LayoutGrid, Monitor } from 'lucide-react';
+import { Play, Layers, Sparkles, Eye, Pencil, Trash2, RefreshCw, AlertCircle, X, Share2, Copy, Search, LayoutGrid, Monitor, Plus } from 'lucide-react';
 import ConnectionWizard from '../components/ConnectionWizard';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const DOMAIN_ICONS = { factory: '🏭', airport: '✈️', warehouse: '📦' };
 const DOMAIN_DESCS = {
@@ -269,16 +270,10 @@ export default function HomePage() {
             </div>
 
             {/* Main Bento Box Grid */}
-            <div style={{ 
-                padding: '40px 60px', 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(12, 1fr)', 
-                gap: '24px',
-                alignItems: 'start'
-            }}>
+            <div className="bento-grid" style={{ padding: '40px 60px' }}>
                 
                 {/* Left Column (8 cols) */}
-                <div style={{ gridColumn: 'span 8', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div className="bento-left-col">
                     
                     {/* Bento Box: Saved Twins */}
                     <div style={{
@@ -314,14 +309,25 @@ export default function HomePage() {
                                     position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', 
                                     alignItems: 'center', justifyContent: 'center', color: 'var(--text-2)' 
                                 }}>
-                                    <LayoutGrid size={32} style={{ marginBottom: '16px', opacity: 0.5 }} />
-                                    <p style={{ fontSize: '14px', margin: 0 }}>No twins saved yet.</p>
+                                    <LayoutGrid size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
+                                    <p style={{ fontSize: '14px', margin: '0 0 16px 0' }}>No twins saved yet.</p>
+                                    <button className="btn btn-primary" onClick={() => setStep(1)} style={{ padding: '8px 16px', fontSize: '13px' }}>
+                                        <Plus size={14} /> Create your first twin
+                                    </button>
                                 </div>
                             )}
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <AnimatePresence initial={false}>
                                 {twins.map(twin => (
-                                    <div key={twin.id} style={{ position: 'relative' }}>
+                                    <motion.div 
+                                        key={twin.id} 
+                                        initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                                        exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                                        transition={{ duration: 0.2 }}
+                                        style={{ position: 'relative' }}
+                                    >
                                         {actionLoading === twin.id && (
                                             <div style={{
                                                 position: 'absolute', inset: 0, zIndex: 10, borderRadius: '12px',
@@ -338,14 +344,15 @@ export default function HomePage() {
                                             onDelete={setToDelete}
                                             onRename={handleRename}
                                         />
-                                    </div>
+                                    </motion.div>
                                 ))}
+                                </AnimatePresence>
                             </div>
                         </div>
                     </div>
 
                     {/* Bento Box: Supported Domains */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                    <div className="bento-domains-grid">
                         {Object.entries(DOMAINS).map(([key, domain]) => (
                             <div key={key} style={{
                                 background: 'var(--bg-1)', borderRadius: '16px', padding: '24px',
@@ -363,7 +370,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Right Column (4 cols) */}
-                <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div className="bento-right-col">
                     
                     {/* Bento Box: Connection Wizard */}
                     <div style={{

@@ -52,8 +52,7 @@ export default function Navbar() {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '0 24px', height: '60px', flexShrink: 0,
             borderBottom: '1px solid var(--border)',
-            background: 'rgba(255,255,255,0.95)',
-            backdropFilter: 'blur(20px)',
+            background: 'var(--bg-1)',
             position: 'relative', zIndex: 100,
         }}>
             {/* Left: Logo */}
@@ -70,7 +69,7 @@ export default function Navbar() {
                 >
                     <div style={{
                         width: '32px', height: '32px', borderRadius: '10px',
-                        background: 'linear-gradient(135deg, #1e293b, #0f172a)',
+                        background: 'linear-gradient(135deg, var(--accent), var(--orange))',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: '18px', fontWeight: 900, color: 'white',
                     }}>
@@ -165,7 +164,7 @@ export default function Navbar() {
                         >
                             <div style={{
                                 width: '28px', height: '28px', borderRadius: '50%',
-                                background: 'linear-gradient(135deg, #e2e4e9, #cbd5e1)',
+                                background: 'var(--bg-2)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 color: 'var(--text-1)'
                             }}>

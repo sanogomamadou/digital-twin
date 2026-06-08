@@ -13,7 +13,7 @@ export default function FormStep() {
     const [localName, setLocalName] = useState(twinName || '');
     const [localDomain, setLocalDomain] = useState(selectedDomain || '');
     const [localWidth, setLocalWidth] = useState(width || 60);
-    const [localLength, setLocalLength] = useState(length || 40);
+    const [localLength, setLocalLength] = useState(length || 42);
 
     const cellSize = 6;
     const gridCols = Math.ceil(localWidth / cellSize);
@@ -126,6 +126,7 @@ export default function FormStep() {
                                         className={`input ${widthError ? 'error' : ''}`}
                                         type="number"
                                         min={12}
+                                        step={6}
                                         value={localWidth}
                                         onChange={e => setLocalWidth(Number(e.target.value))}
                                         style={{ background: 'var(--bg-3)', fontSize: '15px', padding: '14px 16px' }}
@@ -138,6 +139,7 @@ export default function FormStep() {
                                         className={`input ${lengthError ? 'error' : ''}`}
                                         type="number"
                                         min={12}
+                                        step={6}
                                         value={localLength}
                                         onChange={e => setLocalLength(Number(e.target.value))}
                                         style={{ background: 'var(--bg-3)', fontSize: '15px', padding: '14px 16px' }}
@@ -153,7 +155,7 @@ export default function FormStep() {
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                                 <div>
-                                    <div style={{ fontSize: '13px', color: 'var(--text-2)', marginBottom: '4px', fontWeight: 500 }}>Adjusted Area</div>
+                                    <div style={{ fontSize: '13px', color: 'var(--text-2)', marginBottom: '4px', fontWeight: 500 }}>Total Area</div>
                                     <div style={{ 
                                         fontSize: '28px', 
                                         fontWeight: 900, 
@@ -175,7 +177,7 @@ export default function FormStep() {
                                     </div>
                                     <div>
                                         <div style={{ fontSize: '13px', color: 'var(--text-2)', marginBottom: '4px', fontWeight: 500 }}>Resolution</div>
-                                        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-0)' }}>{cellSize * cellSize}m² / cell</div>
+                                        <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-0)' }}>36m² / cell</div>
                                     </div>
                                 </div>
                             </div>

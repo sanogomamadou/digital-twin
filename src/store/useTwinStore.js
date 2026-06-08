@@ -170,7 +170,7 @@ const useTwinStore = create((set, get) => ({
     selectedDomain: null,
     twinName: '',
     width: 60,
-    length: 40,
+    length: 42,
     gridCols: 0,
     gridRows: 0,
     minCols: 1,

@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from 'react';
 import useTwinStore from '../store/useTwinStore';
-import { Save, CheckCircle, Download, Share2, Bell, Activity, LineChart, Bot } from 'lucide-react';
+import { Save, CheckCircle, Download, Share2, Bell, Activity, LineChart, Bot, CheckCircle2, AlertTriangle, AlertOctagon, FolderOpen, Loader2, Hexagon } from 'lucide-react';
 import Scene3D from '../components/Scene3D';
 import KpiPanel from '../components/KpiPanel';
 import KpiCharts from '../components/KpiCharts';
@@ -30,10 +30,10 @@ const TABS = [
 const CAMERA_VIEWS = ['Isometric', 'Top', 'Front', 'Free'];
 
 const WS_LABELS = {
-    connecting:   { color: '#f59e0b', dot: '⏳', text: 'Connecting…' },
-    live:         { color: '#10d98d', dot: '●',  text: 'Live' },
-    reconnecting: { color: '#f97316', dot: '↻',  text: 'Reconnecting' },
-    offline:      { color: '#64748b', dot: '○',  text: 'No data source' },
+    connecting:   { color: '#f59e0b', icon: <Loader2 size={10} className="spin" />, text: 'Connecting…' },
+    live:         { color: '#10d98d', icon: <div style={{width: 8, height: 8, borderRadius: '50%', background: '#10d98d', boxShadow: '0 0 6px #10d98d'}} />, text: 'Live' },
+    reconnecting: { color: '#f97316', icon: <Loader2 size={10} className="spin" />, text: 'Reconnecting' },
+    offline:      { color: '#64748b', icon: <div style={{width: 8, height: 8, borderRadius: '50%', border: '2px solid #64748b'}} />, text: 'No data source' },
 };
 
 export default function TwinView() {
@@ -42,7 +42,7 @@ export default function TwinView() {
         updateKpiValues, setStep,
         activePanel, setActivePanel,
         selectedComponentId, selectComponent,
-        twinName, selectedDomain, activeTwinId,
+        twinName, activeTwinId,
         saveTwinToDb, exportDigitalTwin,
     } = useTwinStore();
 
@@ -139,7 +139,7 @@ export default function TwinView() {
                 }}>
                     {toast.type === 'success'
                         ? <CheckCircle size={16} />
-                        : <span style={{ fontSize: '15px' }}>⚠</span>}
+                        : <AlertTriangle size={16} />}
                     {toast.msg}
                 </div>
             )}
@@ -148,9 +148,9 @@ export default function TwinView() {
             <div style={{ padding: '6px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg-1)', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, flexWrap: 'wrap' }}>
 
                 {/* Twin name */}
-                <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)' }}>
-                        ⬡ {twinName || 'Digital Twin'} — Live
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Hexagon size={14} color="var(--accent)" /> {twinName || 'Digital Twin'} — Live
                     </span>
                     <span style={{ marginLeft: '8px', fontSize: '10px', color: 'var(--text-2)' }}>
                         {components.length} components · {connections.length} connections
@@ -158,10 +158,10 @@ export default function TwinView() {
                 </div>
 
                 {/* WebSocket / source status */}
-                <div style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '8px', fontWeight: 600, whiteSpace: 'nowrap',
+                <div style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '8px', fontWeight: 600, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px',
                     background: `rgba(${wsStatus === 'live' ? '16,217,141' : wsStatus === 'connecting' || wsStatus === 'reconnecting' ? '245,158,11' : '100,116,139'},0.1)`,
                     color: wsInfo.color, border: `1px solid ${wsInfo.color}40` }}>
-                    {wsInfo.dot} {wsInfo.text}
+                    {wsInfo.icon} {wsInfo.text}
                     {wsStatus === 'live' && <span style={{ marginLeft: '6px', opacity: 0.65, fontWeight: 400 }}>· {messageCount} readings</span>}
                     {lastUpdate && wsStatus === 'live' && <span style={{ marginLeft: '6px', opacity: 0.5, fontWeight: 400 }}>{lastUpdate.toLocaleTimeString()}</span>}
                 </div>
@@ -249,13 +249,13 @@ export default function TwinView() {
                     {/* Stats overlay — top left */}
                     <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', flexDirection: 'column', gap: '6px', pointerEvents: 'none' }}>
                         {[
-                            { icon: '⬡', label: 'Components', value: components.length, color: '#4865f2' },
-                            { icon: '✅', label: 'OK', value: kpis.filter(k => k.status === 'green').length, color: '#10d98d' },
-                            { icon: '⚠️', label: 'Warnings', value: warnKpis.length, color: '#f59e0b' },
-                            { icon: '🚨', label: 'Critical', value: critKpis.length, color: '#ef4444' },
+                            { icon: <Hexagon size={14} color="#4865f2" />, label: 'Components', value: components.length, color: '#4865f2' },
+                            { icon: <CheckCircle2 size={14} color="#10d98d" />, label: 'OK', value: kpis.filter(k => k.status === 'green').length, color: '#10d98d' },
+                            { icon: <AlertTriangle size={14} color="#f59e0b" />, label: 'Warnings', value: warnKpis.length, color: '#f59e0b' },
+                            { icon: <AlertOctagon size={14} color="#ef4444" />, label: 'Critical', value: critKpis.length, color: '#ef4444' },
                         ].map(s => (
-                            <div key={s.label} style={{ padding: '5px 10px', borderRadius: '8px', background: 'rgba(255,255,255,0.88)', border: `1px solid ${s.color}28`, backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '13px' }}>{s.icon}</span>
+                            <div key={s.label} style={{ padding: '6px 10px', borderRadius: '8px', background: 'var(--bg-1)', border: `1px solid var(--border)`, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{s.icon}</div>
                                 <div>
                                     <div style={{ fontSize: '15px', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
                                     <div style={{ fontSize: '9px', color: 'var(--text-2)' }}>{s.label}</div>
@@ -266,14 +266,14 @@ export default function TwinView() {
 
                     {/* No data overlay */}
                     {kpis.length === 0 && (
-                        <div style={{ position: 'absolute', bottom: '50px', left: '50%', transform: 'translateX(-50%)', padding: '10px 20px', borderRadius: '12px', background: 'rgba(255,255,255,0.9)', border: '1px solid rgba(72,101,242,0.3)', backdropFilter: 'blur(8px)', textAlign: 'center', pointerEvents: 'none' }}>
+                        <div style={{ position: 'absolute', bottom: '50px', left: '50%', transform: 'translateX(-50%)', padding: '16px 24px', borderRadius: '12px', background: 'var(--bg-1)', border: '1px solid var(--border)', boxShadow: '0 8px 32px rgba(0,0,0,0.1)', textAlign: 'center', pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             {wsStatus === STATUS.CONNECTING || wsStatus === STATUS.RECONNECTING || (wsStatus === STATUS.LIVE && kpiAssignments.length > 0) ? (
                                 <>
-                                    <div style={{ fontSize: '18px', marginBottom: '4px', animation: 'pulse 1.5s infinite' }}>⏳</div>
-                                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-1)', marginBottom: '2px' }}>
+                                    <Loader2 size={24} color="var(--accent)" className="spin" style={{ marginBottom: '8px' }} />
+                                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)', marginBottom: '4px' }}>
                                         {wsStatus === STATUS.LIVE ? 'Waiting for live data…' : 'Connecting to data stream...'}
                                     </div>
-                                    <div style={{ fontSize: '10px', color: 'var(--text-2)' }}>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>
                                         {kpiAssignments.length > 0
                                             ? `${kpiAssignments.length} KPI assignment${kpiAssignments.length !== 1 ? 's' : ''} configured`
                                             : 'Waiting for real-time KPIs to arrive from the backend'}
@@ -281,9 +281,9 @@ export default function TwinView() {
                                 </>
                             ) : (
                                 <>
-                                    <div style={{ fontSize: '18px', marginBottom: '4px' }}>📂</div>
-                                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-1)', marginBottom: '2px' }}>No data source connected</div>
-                                    <div style={{ fontSize: '10px', color: 'var(--text-2)' }}>Go to ← KPI Setup to upload and assign your data</div>
+                                    <FolderOpen size={24} color="var(--text-3)" style={{ marginBottom: '8px' }} />
+                                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)', marginBottom: '4px' }}>No data source connected</div>
+                                    <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>Go to ← KPI Setup to upload and assign your data</div>
                                 </>
                             )}
                         </div>
@@ -291,7 +291,7 @@ export default function TwinView() {
 
                     {/* Selected component tooltip */}
                     {selComp && (
-                        <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', padding: '8px 16px', borderRadius: '10px', background: 'rgba(255,255,255,0.92)', border: `1px solid ${selComp.color}55`, backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ position: 'absolute', bottom: '16px', left: '50%', transform: 'translateX(-50%)', padding: '10px 20px', borderRadius: '12px', background: 'var(--bg-1)', border: `1px solid var(--border)`, boxShadow: `0 4px 16px ${selComp.color}20`, display: 'flex', alignItems: 'center', gap: '16px' }}>
                             <div style={{ width: '10px', height: '10px', borderRadius: '2px', background: selComp.color, flexShrink: 0 }} />
                             <div>
                                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)' }}>{selComp.name}</div>

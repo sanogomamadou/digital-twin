@@ -3,6 +3,7 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
     ResponsiveContainer, AreaChart, Area, BarChart, Bar, Legend, ReferenceLine
 } from 'recharts';
+import { FolderOpen, Link2, TrendingUp } from 'lucide-react';
 import useTwinStore from '../store/useTwinStore';
 
 class ChartErrorBoundary extends Component {
@@ -58,7 +59,7 @@ export default function KpiCharts() {
     if (kpis.length === 0) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '10px', padding: '20px', textAlign: 'center' }}>
-                <div style={{ fontSize: '32px' }}>📂</div>
+                <FolderOpen size={32} color="var(--text-3)" />
                 <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-1)' }}>No data source connected</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.6 }}>
                     Go to ← KPI Setup<br />upload your file and assign KPI columns to components.
@@ -70,7 +71,7 @@ export default function KpiCharts() {
     if (selectedComp && displayKpis.length === 0) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '8px', padding: '20px', textAlign: 'center' }}>
-                <div style={{ fontSize: '28px' }}>🔗</div>
+                <Link2 size={28} color="var(--text-3)" />
                 <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-1)' }}>{selectedComp.name}</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.6 }}>
                     No KPI columns were assigned to this component.<br />
@@ -86,8 +87,8 @@ export default function KpiCharts() {
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
                 <div>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)' }}>
-                        📈 KPI Trends
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <TrendingUp size={14} color="var(--accent)" /> KPI Trends
                         {selectedComp && <span style={{ color: 'var(--accent)', marginLeft: '6px' }}>— {selectedComp.name}</span>}
                     </div>
                     <div style={{ fontSize: '10px', color: 'var(--text-2)' }}>
@@ -143,11 +144,11 @@ export default function KpiCharts() {
                         <Tooltip content={<Tip />} />
                         {orangeThreshold != null && (
                             <ReferenceLine y={orangeThreshold} stroke="#f59e0b" strokeDasharray="4 3" strokeWidth={1}
-                                label={{ value: `⚠ ${orangeThreshold}`, fontSize: 8, fill: '#f59e0b', position: 'right' }} />
+                                label={{ value: `! ${orangeThreshold}`, fontSize: 8, fill: '#f59e0b', position: 'right' }} />
                         )}
                         {redThreshold != null && (
                             <ReferenceLine y={redThreshold} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1}
-                                label={{ value: `🔴 ${redThreshold}`, fontSize: 8, fill: '#ef4444', position: 'right' }} />
+                                label={{ value: `● ${redThreshold}`, fontSize: 8, fill: '#ef4444', position: 'right' }} />
                         )}
                     </>
                 );

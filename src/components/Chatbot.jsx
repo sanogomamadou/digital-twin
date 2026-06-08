@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { nlqQuery, getQuerySuggestions, checkBackendHealth, rateQuery } from '../services/api';
 import DynamicChart from './DynamicChart';
 import useTwinStore from '../store/useTwinStore';
-import { Bot, PlusCircle, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Bot, PlusCircle, ThumbsUp, ThumbsDown, Send } from 'lucide-react';
 
 export default function Chatbot() {
   const { kpis, components, selectedComponentId, selectedDomain, activeTwinId, nlqMessages: messages, setNlqMessages: setMessages, clearNlqMessages } = useTwinStore();
@@ -81,7 +81,7 @@ export default function Chatbot() {
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: 'assistant',
-        text: `⚠️ Backend error: ${e.message}. Using offline mock data instead.\n\n${buildMockAnswer(q, kpis, components, selComp)}`,
+        text: `! Backend error: ${e.message}. Using offline mock data instead.\n\n${buildMockAnswer(q, kpis, components, selComp)}`,
         chart: null,
       }]);
     } finally {
@@ -119,7 +119,7 @@ export default function Chatbot() {
                 color: backendOnline === null ? '#64748b' : backendOnline ? '#10d98d' : '#f59e0b',
                 border: `1px solid ${backendOnline === null ? '#64748b40' : backendOnline ? '#10d98d40' : '#f59e0b40'}`,
               }}>
-                {backendOnline === null ? '⏳ connecting' : backendOnline === true ? '●backend' : `○ offline mode (${backendOnline})`}
+                {backendOnline === null ? 'connecting...' : backendOnline === true ? '● connected' : `○ offline mode`}
               </span>
             </div>
             <div style={{ fontSize: '10px', color: 'var(--text-2)' }}>
@@ -128,7 +128,7 @@ export default function Chatbot() {
           </div>
           {/* KPI badge row & New Chat */}
           <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-            {[['#10d98d', okCount, 'OK'], ['#f59e0b', warnCount, '⚠'], ['#ef4444', critCount, '🚨']].map(([c, n, l]) => (
+            {[['#10d98d', okCount, 'OK'], ['#f59e0b', warnCount, 'WARN'], ['#ef4444', critCount, 'CRIT']].map(([c, n, l]) => (
               <div key={l} style={{ padding: '2px 6px', borderRadius: '5px', background: `${c}18`, border: `1px solid ${c}30`, textAlign: 'center' }}>
                 <div style={{ fontSize: '12px', fontWeight: 800, color: c, lineHeight: 1 }}>{n}</div>
                 <div style={{ fontSize: '8px', color: 'var(--text-2)' }}>{l}</div>
@@ -202,8 +202,8 @@ export default function Chatbot() {
           <div style={{ display: 'flex' }}>
             <div style={{ padding: '10px 14px', borderRadius: '14px 14px 14px 4px', background: 'var(--bg-0)', border: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-1)', marginRight: '4px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {currentThought ? `🧠 ${currentThought}` : <><Bot size={12} /> AI thinking</>}
+                  <span style={{ fontSize: '11px', color: 'var(--text-1)', marginRight: '4px', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Bot size={12} color="var(--accent)" /> {currentThought ? currentThought : 'AI thinking'}
                   </span>
                 <div style={{display: 'flex', gap: '4px'}}>
                     {[0,1,2].map(i => <span key={i} style={{ width:'6px', height:'6px', borderRadius:'50%', background:'var(--accent)', animation:`bounce 0.8s ease-in-out ${i*0.15}s infinite` }} />)}
@@ -232,8 +232,8 @@ export default function Chatbot() {
           placeholder={backendOnline ? 'Ask about KPIs — AI will analyze & chart…' : 'Ask about your KPIs…'}
           rows={2} style={{ flex: 1, background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: '8px', padding: '7px 10px', color: 'var(--text-0)', fontSize: '12px', resize: 'none', outline: 'none', fontFamily: 'inherit' }} />
         <button onClick={() => handleSend()} disabled={!input.trim()}
-          style={{ width: '38px', height: '38px', borderRadius: '9px', flexShrink: 0, alignSelf: 'flex-end', background: input.trim() ? 'linear-gradient(135deg,#4865f2,#f4723e)' : 'var(--bg-0)', border: '1px solid var(--border)', cursor: input.trim() ? 'pointer' : 'not-allowed', fontSize: '15px', transition: 'all 0.15s' }}>
-          ➤
+          style={{ width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '9px', flexShrink: 0, alignSelf: 'flex-end', background: input.trim() ? 'linear-gradient(135deg,#4865f2,#f4723e)' : 'var(--bg-0)', border: '1px solid var(--border)', cursor: input.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.15s' }}>
+          <Send size={15} color={input.trim() ? '#fff' : 'var(--text-3)'} />
         </button>
       </div>
       <style>{`@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}`}</style>
@@ -255,10 +255,10 @@ function buildMockAnswer(q, kpis, components, selComp) {
   const crit = kpis.filter(k => k.status === 'red');
   const warn = kpis.filter(k => k.status === 'orange');
   if (ql.includes('status') || ql.includes('statut') || ql.includes('overview')) {
-    return `**System Overview**\n🟢 ${kpis.filter(k=>k.status==='green').length} OK · 🟡 ${warn.length} Warning · 🔴 ${crit.length} Critical\n\n${kpis.map(k=>`• **${k.name}**: ${typeof k.value==='number'?k.value.toFixed(1):k.value} ${k.unit} (${k.status.toUpperCase()})`).join('\n')}`;
+    return `**System Overview**\n${kpis.filter(k=>k.status==='green').length} OK · ${warn.length} Warning · ${crit.length} Critical\n\n${kpis.map(k=>`• **${k.name}**: ${typeof k.value==='number'?k.value.toFixed(1):k.value} ${k.unit} (${k.status.toUpperCase()})`).join('\n')}`;
   }
   if (ql.includes('anomal') || ql.includes('alert') || ql.includes('critical')) {
-    return crit.length ? `**${crit.length} critical alert(s):**\n${crit.map(k=>`🚨 ${k.name}: ${k.value.toFixed?k.value.toFixed(1):k.value} ${k.unit}`).join('\n')}` : '✅ No critical anomalies detected.';
+    return crit.length ? `**${crit.length} critical alert(s):**\n${crit.map(k=>`! ${k.name}: ${k.value.toFixed?k.value.toFixed(1):k.value} ${k.unit}`).join('\n')}` : 'No critical anomalies detected.';
   }
   const targets = selComp ? kpis.filter(k => selComp.kpiIds?.includes(k.id)) : kpis;
   return `**KPI Summary${selComp ? ` for ${selComp.name}` : ''}**\n${targets.slice(0,4).map(k=>`• ${k.name}: **${typeof k.value==='number'?k.value.toFixed(1):k.value} ${k.unit}** — ${k.status}`).join('\n')}`;

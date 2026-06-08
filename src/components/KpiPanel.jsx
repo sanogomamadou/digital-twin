@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import useTwinStore from '../store/useTwinStore';
+import { Activity, FolderOpen, Loader2, Link2 } from 'lucide-react';
 
 const STATUS_COLOR = { green: '#10d98d', orange: '#f59e0b', red: '#ef4444' };
 const STATUS_LABEL = { green: 'NORMAL', orange: 'WARNING', red: 'CRITICAL' };
@@ -34,7 +35,7 @@ export default function KpiPanel() {
       {/* Header */}
       <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span>📊 KPI Monitor</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Activity size={14} color="var(--accent)" /> KPI Monitor</span>
           {selectedComp && (
             <button onClick={() => selectComponent(null)}
               style={{ fontSize: '10px', color: 'var(--text-2)', background: 'none', border: 'none', cursor: 'pointer' }}>
@@ -74,8 +75,8 @@ export default function KpiPanel() {
 
         {/* Empty state — waiting for live data (has assignments) */}
         {kpis.length === 0 && hasAssignments && (
-          <div style={{ padding: '24px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', marginBottom: '8px', animation: 'pulse 1.5s infinite' }}>⏳</div>
+          <div style={{ padding: '24px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Loader2 size={28} color="var(--accent)" className="spin" style={{ marginBottom: '8px' }} />
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-1)', marginBottom: '6px' }}>Waiting for live data…</div>
             <div style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.6, marginBottom: '12px' }}>
               {kpiAssignments.length} KPI assignment{kpiAssignments.length !== 1 ? 's' : ''} configured. Connecting to the data stream…
@@ -85,8 +86,8 @@ export default function KpiPanel() {
 
         {/* Empty state — no assignments at all */}
         {kpis.length === 0 && !hasAssignments && (
-          <div style={{ padding: '24px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', marginBottom: '8px' }}>📂</div>
+          <div style={{ padding: '24px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <FolderOpen size={28} color="var(--text-3)" style={{ marginBottom: '8px' }} />
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-1)', marginBottom: '6px' }}>No data source connected</div>
             <div style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.6, marginBottom: '12px' }}>
               Upload a file and assign KPI columns to components in the KPI Setup step.
@@ -100,8 +101,8 @@ export default function KpiPanel() {
 
         {/* Component has no assigned KPIs */}
         {kpis.length > 0 && selectedComp && baseKpis.length === 0 && (
-          <div style={{ padding: '16px 12px', textAlign: 'center' }}>
-            <div style={{ fontSize: '22px', marginBottom: '6px' }}>🔗</div>
+          <div style={{ padding: '16px 12px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Link2 size={22} color="var(--text-3)" style={{ marginBottom: '6px' }} />
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-1)', marginBottom: '4px' }}>{selectedComp.name}</div>
             <div style={{ fontSize: '11px', color: 'var(--text-2)', lineHeight: 1.6, marginBottom: '10px' }}>
               No KPI columns were assigned to this component.

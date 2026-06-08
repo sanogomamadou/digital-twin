@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { getLLMConfig, updateLLMConfig } from '../../services/api';
-import { Save, BrainCircuit, Key, Trash2, Plus, Server, Settings2 } from 'lucide-react';
+import { Save, BrainCircuit, Key, Trash2, Plus, Server, Settings2, HelpCircle } from 'lucide-react';
+import useToastStore from '../../store/useToastStore';
+import useHotkeys from '../../hooks/useHotkeys';
 
 export default function AdminLLMOps() {
     const [config, setConfig] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const { addToast } = useToastStore();
 
     useEffect(() => {
         fetchConfig();
@@ -22,17 +25,20 @@ export default function AdminLLMOps() {
         }
     };
 
-    const handleSave = async () => {
+    const handleSave = async (e) => {
+        if (e) e.preventDefault();
         setSaving(true);
         try {
             await updateLLMConfig(config);
-            alert('LLM Configuration saved successfully!');
+            addToast('LLM Configuration saved successfully!', 'success');
         } catch (e) {
-            alert('Error saving: ' + e.message);
+            addToast('Error saving: ' + e.message, 'error');
         } finally {
             setSaving(false);
         }
     };
+
+    useHotkeys('ctrl+s', handleSave);
 
     if (loading || !config) {
         return (
@@ -133,7 +139,13 @@ export default function AdminLLMOps() {
                 <div style={{ padding: '24px', borderBottom: '1px solid var(--border)', background: 'var(--bg-3)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                         <Settings2 size={18} color="var(--text-1)" />
-                        <label className="label" style={{ marginBottom: 0 }}>Base System Prompt</label>
+                        <label className="label" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            Base System Prompt
+                            <div className="tooltip-wrap" style={{ display: 'flex' }}>
+                                <HelpCircle size={14} color="var(--text-2)" />
+                                <div className="tooltip">Prepended to all agents. Impacts global behavior.</div>
+                            </div>
+                        </label>
                     </div>
                     <textarea 
                         value={config.system_prompt}
@@ -159,8 +171,14 @@ export default function AdminLLMOps() {
                             <Key size={20} />
                         </div>
                         <div>
-                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-0)' }}>API Key Vault (Failover Quotas)</h3>
-                            <p style={{ fontSize: '13px', color: 'var(--text-2)' }}>Multiple keys allow automatic fallback on 429 Rate Limits.</p>
+                            <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-0)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                API Key Vault (Failover Quotas)
+                                <div className="tooltip-wrap" style={{ display: 'flex' }}>
+                                    <HelpCircle size={14} color="var(--text-2)" />
+                                    <div className="tooltip">Multiple keys allow automatic fallback on 429 Rate Limits.</div>
+                                </div>
+                            </h3>
+                            <p style={{ fontSize: '13px', color: 'var(--text-2)' }}>Add secondary keys for high-availability routing.</p>
                         </div>
                     </div>
                     

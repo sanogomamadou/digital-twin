@@ -55,8 +55,8 @@ export default function AdminPerformance() {
             {/* KPI Cards - Bento Grid */}
             <div className="admin-bento-grid" style={{ 
                 display: 'grid', 
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-                gap: '20px' 
+                gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', 
+                gap: '16px' 
             }}>
                 <MetricCard icon={<Clock />} label="Avg Latency" value={`${metrics.avgLatency} ms`} trend="Last 7 days" positive={true} />
                 <MetricCard icon={<Target />} label="API Success" value={`${metrics.successRate}%`} trend="Last 7 days" positive={metrics.successRate > 90} />
@@ -133,15 +133,15 @@ function MetricCard({ icon, label, value, trend, positive }) {
             background: 'var(--bg-1)', 
             borderRadius: 'var(--r-lg)', 
             border: '1px solid var(--border)', 
-            padding: '24px',
+            padding: '16px',
             boxShadow: 'var(--shadow-sm)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '12px'
+            gap: '8px'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ 
-                    padding: '8px', 
+                    padding: '6px', 
                     background: 'var(--bg-0)', 
                     borderRadius: 'var(--r-md)', 
                     color: 'var(--text-1)',
@@ -149,10 +149,10 @@ function MetricCard({ icon, label, value, trend, positive }) {
                 }}>
                     {icon}
                 </div>
-                <span className="label" style={{ marginBottom: 0 }}>{label}</span>
+                <span className="label" style={{ marginBottom: 0, fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
             </div>
             <div>
-                <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--text-0)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-0)', letterSpacing: '-0.02em', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {value}
                 </div>
             </div>

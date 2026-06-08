@@ -17,6 +17,7 @@ import SharedTwinView from './pages/SharedTwinView';
 import AuthPage from './pages/AuthPage';
 import useAuthStore from './store/useAuthStore';
 import AdminLayout from './pages/admin/AdminLayout';
+import ToastContainer from './components/ToastContainer';
 
 export default function App() {
   const { currentStep } = useTwinStore();
@@ -80,6 +81,7 @@ export default function App() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {renderPage()}
       </div>
+      <ToastContainer />
     </div>
   );
 }

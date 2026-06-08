@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { getAdminUsers, updateAdminUserRole, deleteAdminUser, resetAdminUserPassword, createAdminUser } from '../../services/api';
 import { Trash2, Shield, ShieldAlert, KeyRound, UserPlus, Search } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
+import useToastStore from '../../store/useToastStore';
+import useHotkeys from '../../hooks/useHotkeys';
 
 export default function AdminUsers() {
     const [users, setUsers] = useState([]);
@@ -10,8 +12,12 @@ export default function AdminUsers() {
     const [newUsername, setNewUsername] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [newRole, setNewRole] = useState('user');
+    const [searchQuery, setSearchQuery] = useState('');
     
     const { user: currentUser } = useAuthStore();
+    const { addToast } = useToastStore();
+
+    useHotkeys('Escape', () => setShowCreate(false));
 
     useEffect(() => {
         fetchUsers();
@@ -37,8 +43,9 @@ export default function AdminUsers() {
             setNewRole('user');
             setShowCreate(false);
             fetchUsers();
+            addToast('User created successfully.', 'success');
         } catch (e) {
-            alert('Error creating user: ' + e.message);
+            addToast('Error creating user: ' + e.message, 'error');
         }
     };
 
@@ -46,8 +53,9 @@ export default function AdminUsers() {
         try {
             await updateAdminUserRole(userId, newRole);
             fetchUsers();
+            addToast(`Role updated to ${newRole}`, 'success');
         } catch (e) {
-            alert('Error updating role: ' + e.message);
+            addToast('Error updating role: ' + e.message, 'error');
         }
     };
 
@@ -56,8 +64,9 @@ export default function AdminUsers() {
         try {
             await deleteAdminUser(userId);
             fetchUsers();
+            addToast('User deleted.', 'success');
         } catch (e) {
-            alert('Error deleting user: ' + e.message);
+            addToast('Error deleting user: ' + e.message, 'error');
         }
     };
 
@@ -66,9 +75,9 @@ export default function AdminUsers() {
         if (!newPwd) return;
         try {
             await resetAdminUserPassword(userId, newPwd);
-            alert('Password updated successfully.');
+            addToast('Password updated successfully.', 'success');
         } catch (e) {
-            alert('Error updating password: ' + e.message);
+            addToast('Error updating password: ' + e.message, 'error');
         }
     };
 
@@ -164,7 +173,14 @@ export default function AdminUsers() {
                 <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', gap: '16px', background: 'var(--bg-0)' }}>
                     <div style={{ position: 'relative', width: '300px' }}>
                         <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-2)' }} />
-                        <input type="text" placeholder="Search users..." className="input" style={{ paddingLeft: '36px', height: '36px' }} />
+                        <input 
+                            type="text" 
+                            placeholder="Search users..." 
+                            className="input" 
+                            style={{ paddingLeft: '36px', height: '36px' }} 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                     </div>
                 </div>
 
@@ -179,7 +195,7 @@ export default function AdminUsers() {
                             </tr>
                         </thead>
                         <tbody>
-                            {users.map(u => (
+                            {users.filter(u => u.username.toLowerCase().includes(searchQuery.toLowerCase())).map(u => (
                                 <tr key={u.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-3)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                                     <td style={{ padding: '16px 24px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -236,7 +252,7 @@ export default function AdminUsers() {
                                     </td>
                                 </tr>
                             ))}
-                            {users.length === 0 && (
+                            {users.filter(u => u.username.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
                                 <tr>
                                     <td colSpan={4} style={{ padding: '64px', textAlign: 'center' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>

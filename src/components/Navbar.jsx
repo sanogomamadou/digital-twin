@@ -112,10 +112,10 @@ export default function Navbar() {
                                             width: '24px', height: '24px', borderRadius: '50%',
                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                                             fontSize: '11px', fontWeight: 700,
-                                            background: isActive ? 'var(--text-0)' : (isPast ? 'rgba(72,101,242,0.1)' : 'var(--bg-2)'),
+                                            background: isActive ? 'var(--accent)' : (isPast ? 'rgba(72,101,242,0.1)' : 'var(--bg-2)'),
                                             color: isActive ? '#fff' : (isPast ? 'var(--accent)' : 'var(--text-2)'),
-                                            border: isActive ? '1px solid var(--text-0)' : (isPast ? '1px solid rgba(72,101,242,0.2)' : '1px solid transparent'),
-                                            boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+                                            border: isActive ? '1px solid var(--accent)' : (isPast ? '1px solid rgba(72,101,242,0.2)' : '1px solid transparent'),
+                                            boxShadow: isActive ? '0 2px 8px rgba(72,101,242,0.3)' : 'none',
                                             transition: 'all 0.2s ease'
                                         }}>
                                             {isPast ? <Check size={12} strokeWidth={3} /> : step.id}

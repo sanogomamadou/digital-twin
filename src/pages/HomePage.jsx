@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import useTwinStore, { DOMAINS } from '../store/useTwinStore';
-import { Play, Layers, Sparkles, Eye, Pencil, Trash2, Save, RefreshCw, AlertCircle, X, Share2, Copy } from 'lucide-react';
+import { Play, Layers, Sparkles, Eye, Pencil, Trash2, RefreshCw, AlertCircle, X, Share2, Copy, Search, LayoutGrid, Monitor } from 'lucide-react';
 import ConnectionWizard from '../components/ConnectionWizard';
 
 const DOMAIN_ICONS = { factory: '🏭', airport: '✈️', warehouse: '📦' };
@@ -9,37 +9,41 @@ const DOMAIN_DESCS = {
     airport: 'Track terminals, gates, runways & passenger flows with live KPIs',
     warehouse: 'Manage racks, picking zones, docks & logistics flows efficiently',
 };
-const DOMAIN_COLORS = { factory: '#f97316', airport: '#06b6d4', warehouse: '#84cc16' };
+const DOMAIN_COLORS = { factory: '#f4723e', airport: '#4865f2', warehouse: '#10d98d' };
 
 function ConfirmModal({ twin, onConfirm, onCancel }) {
     return (
         <div style={{
             position: 'fixed', inset: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-            <div className="glass" style={{
-                padding: '32px', borderRadius: '20px', width: '360px',
-                border: '1px solid var(--border)', boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
+            <div style={{
+                background: 'var(--bg-1)', padding: '32px', borderRadius: '16px', width: '400px',
+                border: '1px solid var(--border)', boxShadow: '0 24px 60px rgba(0,0,0,0.15)',
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                    <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '24px' }}>
+                    <div style={{ 
+                        width: '40px', height: '40px', borderRadius: '10px', 
+                        background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0
+                    }}>
                         <AlertCircle size={20} color="#ef4444" />
                     </div>
                     <div>
-                        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-0)' }}>Delete Twin</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>This action cannot be undone</div>
+                        <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-0)', marginBottom: '4px' }}>Delete Twin</div>
+                        <div style={{ fontSize: '14px', color: 'var(--text-1)', lineHeight: 1.5 }}>
+                            Are you sure you want to permanently delete <strong>{twin.name}</strong>? This action cannot be undone.
+                        </div>
                     </div>
                 </div>
-                <p style={{ fontSize: '13px', color: 'var(--text-1)', marginBottom: '24px', lineHeight: 1.6 }}>
-                    Are you sure you want to permanently delete <strong style={{ color: 'var(--text-0)' }}>{twin.name}</strong>?
-                </p>
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                    <button className="btn btn-ghost" onClick={onCancel} style={{ fontSize: '13px' }}>
-                        <X size={14} /> Cancel
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-ghost" onClick={onCancel}>
+                        Cancel
                     </button>
                     <button className="btn" onClick={onConfirm}
-                        style={{ fontSize: '13px', background: '#ef4444', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Trash2 size={14} /> Delete
+                        style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', cursor: 'pointer', fontWeight: 500 }}>
+                        Delete
                     </button>
                 </div>
             </div>
@@ -47,7 +51,7 @@ function ConfirmModal({ twin, onConfirm, onCancel }) {
     );
 }
 
-function TwinCard({ twin, onLoad, onEdit, onDelete, onRename }) {
+function TwinListItem({ twin, onLoad, onEdit, onDelete, onRename }) {
     const [hovered, setHovered] = useState(false);
     const [isRenaming, setIsRenaming] = useState(false);
     const [editName, setEditName] = useState(twin.name);
@@ -66,39 +70,24 @@ function TwinCard({ twin, onLoad, onEdit, onDelete, onRename }) {
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
             style={{
-                position: 'relative', borderRadius: '16px', overflow: 'hidden',
-                border: `1px solid ${hovered ? color + '66' : 'var(--border)'}`,
-                background: 'var(--surface-1)',
-                boxShadow: hovered ? `0 8px 32px ${color}22` : '0 2px 8px rgba(0,0,0,0.12)',
-                transition: 'all 0.25s ease',
-                transform: hovered ? 'translateY(-4px)' : 'none',
-                display: 'flex', flexDirection: 'column',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px 16px', borderRadius: '12px',
+                background: hovered ? 'var(--bg-0)' : 'transparent',
+                border: '1px solid',
+                borderColor: hovered ? 'rgba(72,101,242,0.15)' : 'transparent',
+                transition: 'all 0.15s ease',
             }}
         >
-            {/* Color band top */}
-            <div style={{ height: '4px', background: `linear-gradient(90deg, ${color}, ${color}88)` }} />
-
-            {/* Card body */}
-            <div style={{ padding: '20px', flex: 1 }}>
-                {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
-                    <div style={{
-                        width: '44px', height: '44px', borderRadius: '12px',
-                        background: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '22px', flexShrink: 0,
-                    }}>
-                        {DOMAIN_ICONS[twin.domain] || '🏗️'}
-                    </div>
-                    <span style={{
-                        fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-                        color: color, background: `${color}18`, padding: '3px 8px', borderRadius: '6px',
-                    }}>
-                        {twin.domain}
-                    </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1 }}>
+                <div style={{
+                    width: '40px', height: '40px', borderRadius: '10px',
+                    background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '20px', flexShrink: 0, border: `1px solid ${color}30`
+                }}>
+                    {DOMAIN_ICONS[twin.domain] || '🏗️'}
                 </div>
-
-                {/* Name */}
-                <div style={{ marginBottom: '6px', minHeight: '20px' }}>
+                
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                     {isRenaming ? (
                         <input
                             autoFocus
@@ -110,87 +99,55 @@ function TwinCard({ twin, onLoad, onEdit, onDelete, onRename }) {
                                 if (e.key === 'Escape') { setEditName(twin.name); setIsRenaming(false); }
                             }}
                             style={{
-                                fontSize: '15px', fontWeight: 700, color: 'var(--text-0)',
-                                background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border)',
-                                borderRadius: '4px', padding: '2px 6px', width: '100%', outline: 'none',
-                                boxSizing: 'border-box'
+                                fontSize: '14px', fontWeight: 600, color: 'var(--text-0)',
+                                background: 'var(--bg-1)', border: '1px solid var(--border)',
+                                borderRadius: '6px', padding: '4px 8px', width: '240px', outline: 'none'
                             }}
                         />
                     ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-0)', lineHeight: 1.3, wordBreak: 'break-word', paddingRight: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-0)' }}>
                                 {twin.name}
-                            </div>
+                            </span>
                             <button
                                 onClick={() => setIsRenaming(true)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-2)', padding: 0, flexShrink: 0 }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-2)', padding: 0, opacity: hovered ? 1 : 0 }}
                                 title="Rename twin"
                             >
                                 <Pencil size={12} />
                             </button>
                         </div>
                     )}
-                </div>
-
-                {/* Metadata */}
-                <div style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
-                    <span style={{ fontSize: '11px', color: 'var(--text-2)' }}>
-                        📐 {twin.width}m × {twin.length}m
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--text-2)' }}>
-                        🔲 {twin.gridCols}×{twin.gridRows}
-                    </span>
-                </div>
-
-                {/* Stats */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                    <span className="tag" style={{ fontSize: '10px' }}>
-                        {twin.componentCount ?? 0} components
-                    </span>
-                    <span className="tag" style={{ fontSize: '10px' }}>
-                        {twin.connectionCount ?? 0} connections
-                    </span>
-                </div>
-
-                {/* Date */}
-                <div style={{ fontSize: '10px', color: 'var(--text-2)' }}>
-                    Updated {updatedAt}
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '4px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 500, color: color, textTransform: 'capitalize' }}>{twin.domain}</span>
+                        <div style={{ width: '3px', height: '3px', borderRadius: '50%', background: 'var(--text-2)' }} />
+                        <span style={{ fontSize: '12px', color: 'var(--text-1)' }}>{twin.width}m × {twin.length}m</span>
+                        <div style={{ width: '3px', height: '3px', borderRadius: '50%', background: 'var(--text-2)' }} />
+                        <span style={{ fontSize: '12px', color: 'var(--text-1)' }}>{twin.componentCount ?? 0} components</span>
+                        <div style={{ width: '3px', height: '3px', borderRadius: '50%', background: 'var(--text-2)' }} />
+                        <span style={{ fontSize: '12px', color: 'var(--text-1)' }}>Updated {updatedAt}</span>
+                    </div>
                 </div>
             </div>
 
-            {/* Action footer */}
-            <div style={{
-                padding: '12px 16px', borderTop: '1px solid var(--border)',
-                display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.02)',
-            }}>
-                <button
-                    className="btn btn-primary"
-                    onClick={() => onLoad(twin.id)}
-                    style={{ flex: 1, fontSize: '12px', padding: '7px 10px', gap: '5px' }}
-                >
-                    <Eye size={13} /> View
+            <div style={{ display: 'flex', gap: '8px', opacity: hovered ? 1 : 0, transition: 'opacity 0.15s ease' }}>
+                <button className="btn btn-ghost" onClick={() => onLoad(twin.id)} style={{ padding: '6px 12px', fontSize: '13px', height: '32px' }}>
+                    <Eye size={14} /> View
                 </button>
-                <button
-                    className="btn btn-ghost"
-                    onClick={() => onEdit(twin.id)}
-                    title="Edit twin"
-                    style={{ fontSize: '12px', padding: '7px 12px', gap: '5px' }}
-                >
-                    <Pencil size={13} /> Edit
+                <button className="btn btn-ghost" onClick={() => onEdit(twin.id)} style={{ padding: '6px 12px', fontSize: '13px', height: '32px' }}>
+                    <Pencil size={14} /> Edit
                 </button>
-                <button
+                <button 
                     onClick={() => onDelete(twin)}
-                    title="Delete twin"
-                    style={{
-                        padding: '7px 10px', borderRadius: '8px', border: '1px solid var(--border)',
-                        background: 'transparent', color: '#ef4444', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', gap: '5px', fontSize: '12px',
-                        transition: 'background 0.15s',
+                    style={{ 
+                        background: 'none', border: '1px solid transparent', color: 'var(--text-2)', 
+                        padding: '6px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                        transition: 'all 0.15s ease'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    onMouseEnter={e => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-2)'; e.currentTarget.style.background = 'none'; }}
                 >
-                    <Trash2 size={13} />
+                    <Trash2 size={16} />
                 </button>
             </div>
         </div>
@@ -255,9 +212,8 @@ export default function HomePage() {
     };
 
     return (
-        <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', background: 'var(--bg-0)' }}>
 
-            {/* Confirmation modal */}
             {toDelete && (
                 <ConfirmModal
                     twin={toDelete}
@@ -266,7 +222,6 @@ export default function HomePage() {
                 />
             )}
 
-            {/* Error toast */}
             {error && (
                 <div style={{
                     position: 'fixed', top: '80px', right: '24px', zIndex: 999,
@@ -282,232 +237,217 @@ export default function HomePage() {
                 </div>
             )}
 
-            {/* Hero */}
+            {/* Application Header - Clean, Left-aligned */}
             <div style={{
-                padding: '80px 60px 60px',
-                background: 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(72,101,242,0.08) 0%, transparent 70%)',
+                padding: '40px 60px 32px',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
                 borderBottom: '1px solid var(--border)',
-                textAlign: 'center',
+                background: 'var(--bg-1)'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
-                    <span className="badge badge-blue" style={{ padding: '6px 16px', fontSize: '12px' }}>
-                        <Sparkles size={12} />
-                        DXC Technology · Intelligent Analytics
-                    </span>
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                        <Monitor size={20} color="var(--accent)" />
+                        <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--accent)' }}>
+                            Intelligent Analytics Deck
+                        </span>
+                    </div>
+                    <h1 style={{
+                        fontSize: '32px', fontWeight: 700, color: 'var(--text-0)',
+                        letterSpacing: '-0.02em', margin: 0,
+                    }}>
+                        3D Digital Twin Platform
+                    </h1>
                 </div>
-                <h1 style={{
-                    fontSize: 'clamp(36px,5vw,64px)', fontWeight: 900, lineHeight: 1.05,
-                    letterSpacing: '-0.03em', marginBottom: '20px',
-                    background: 'linear-gradient(135deg, #f0f4ff 0%, #94a3c8 50%, #4865f2 100%)',
-                    WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-                }}>
-                    3D Digital Twin<br />Platform
-                </h1>
-                <p style={{ fontSize: '18px', color: 'var(--text-1)', maxWidth: '540px', margin: '0 auto 40px', lineHeight: 1.6 }}>
-                    Create agnostic real-time 3D digital twins for factories, airports and
-                    warehouses — with live KPI monitoring and AI-assisted placement.
-                </p>
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                    <button className="btn btn-primary btn-lg" onClick={() => setStep(1)}>
-                        <Play size={18} /> Create New Twin
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button className="btn btn-ghost" onClick={() => { loadDemo(); setStep(5); }} style={{ padding: '10px 16px' }}>
+                        <Layers size={16} /> View Demo
                     </button>
-                    <button className="btn btn-ghost btn-lg" onClick={() => { loadDemo(); setStep(5); }}>
-                        <Layers size={18} /> View Live Demo
+                    <button className="btn btn-primary" onClick={() => setStep(1)} style={{ padding: '10px 20px' }}>
+                        <Play size={16} /> Create Twin
                     </button>
                 </div>
             </div>
 
-            {/* Connection Wizard */}
-            <div style={{ padding: '48px 60px 0' }}>
-                <ConnectionWizard />
-            </div>
-
-            {/* Saved twins */}
-            <div style={{ padding: '48px 60px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-                    <div>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>
-                            Saved Digital Twins
+            {/* Main Bento Box Grid */}
+            <div style={{ 
+                padding: '40px 60px', 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(12, 1fr)', 
+                gap: '24px',
+                alignItems: 'start'
+            }}>
+                
+                {/* Left Column (8 cols) */}
+                <div style={{ gridColumn: 'span 8', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    
+                    {/* Bento Box: Saved Twins */}
+                    <div style={{
+                        background: 'var(--bg-1)', borderRadius: '16px',
+                        border: '1px solid rgba(72,101,242,0.15)',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+                        display: 'flex', flexDirection: 'column'
+                    }}>
+                        <div style={{ 
+                            padding: '24px', borderBottom: '1px solid var(--border)',
+                            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        }}>
+                            <div>
+                                <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-0)', margin: '0 0 4px 0' }}>Saved Twins</h2>
+                                <p style={{ fontSize: '13px', color: 'var(--text-1)', margin: 0 }}>
+                                    {loading ? 'Loading database...' : `${twins.length} active instances`}
+                                </p>
+                            </div>
+                            <button
+                                className="btn btn-ghost"
+                                onClick={() => { setLoading(true); fetchTwins().finally(() => setLoading(false)); }}
+                                disabled={loading}
+                                style={{ padding: '8px', height: 'auto' }}
+                                title="Refresh data"
+                            >
+                                <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+                            </button>
                         </div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-2)' }}>
-                            {loading ? 'Loading…' : twins.length === 0 ? 'No twins saved yet — create your first one above.' : `${twins.length} twin${twins.length > 1 ? 's' : ''} saved`}
+                        
+                        <div style={{ padding: '12px', minHeight: '200px', position: 'relative' }}>
+                            {twins.length === 0 && !loading && (
+                                <div style={{ 
+                                    position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', 
+                                    alignItems: 'center', justifyContent: 'center', color: 'var(--text-2)' 
+                                }}>
+                                    <LayoutGrid size={32} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                                    <p style={{ fontSize: '14px', margin: 0 }}>No twins saved yet.</p>
+                                </div>
+                            )}
+                            
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {twins.map(twin => (
+                                    <div key={twin.id} style={{ position: 'relative' }}>
+                                        {actionLoading === twin.id && (
+                                            <div style={{
+                                                position: 'absolute', inset: 0, zIndex: 10, borderRadius: '12px',
+                                                background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            }}>
+                                                <RefreshCw size={20} color="var(--accent)" style={{ animation: 'spin 1s linear infinite' }} />
+                                            </div>
+                                        )}
+                                        <TwinListItem
+                                            twin={twin}
+                                            onLoad={handleLoad}
+                                            onEdit={handleEdit}
+                                            onDelete={setToDelete}
+                                            onRename={handleRename}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                    <button
-                        className="btn btn-ghost"
-                        onClick={() => { setLoading(true); fetchTwins().finally(() => setLoading(false)); }}
-                        style={{ fontSize: '12px', gap: '6px' }}
-                        disabled={loading}
-                    >
-                        <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-                        Refresh
-                    </button>
-                </div>
 
-                {twins.length > 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px', marginBottom: '48px' }}>
-                        {twins.map(twin => (
-                            <div key={twin.id} style={{ position: 'relative' }}>
-                                {actionLoading === twin.id && (
-                                    <div style={{
-                                        position: 'absolute', inset: 0, zIndex: 10, borderRadius: '16px',
-                                        background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    }}>
-                                        <RefreshCw size={20} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
-                                    </div>
-                                )}
-                                <TwinCard
-                                    twin={twin}
-                                    onLoad={handleLoad}
-                                    onEdit={handleEdit}
-                                    onDelete={setToDelete}
-                                    onRename={handleRename}
-                                />
+                    {/* Bento Box: Supported Domains */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                        {Object.entries(DOMAINS).map(([key, domain]) => (
+                            <div key={key} style={{
+                                background: 'var(--bg-1)', borderRadius: '16px', padding: '24px',
+                                border: '1px solid var(--border)',
+                                boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+                                display: 'flex', flexDirection: 'column'
+                            }}>
+                                <div style={{ fontSize: '28px', marginBottom: '16px' }}>{DOMAIN_ICONS[key]}</div>
+                                <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-0)', marginBottom: '8px' }}>{domain.label}</div>
+                                <div style={{ fontSize: '13px', color: 'var(--text-1)', lineHeight: 1.5 }}>{DOMAIN_DESCS[key]}</div>
                             </div>
                         ))}
                     </div>
-                )}
 
-                <div className="divider" style={{ marginBottom: '40px' }} />
-
-                {/* Share Links */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-                    <div>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '4px' }}>
-                            Active Share Links
-                        </div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-2)' }}>
-                            {loading ? 'Loading…' : shareLinks.length === 0 ? 'No active share links.' : `${shareLinks.length} active link${shareLinks.length > 1 ? 's' : ''}`}
-                        </div>
-                    </div>
                 </div>
 
-                {shareLinks.length > 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', marginBottom: '48px' }}>
-                        {shareLinks.map(link => {
-                            const linkUrl = `${window.location.origin}/live/${link.id}`;
-                            const isCopied = copiedLink === link.id;
-                            const relatedTwin = twins.find(t => t.id === link.twin_id);
-                            
-                            return (
-                                <div key={link.id} style={{ 
-                                    padding: '16px', borderRadius: '16px', border: '1px solid var(--border)', 
-                                    background: 'var(--surface-1)', display: 'flex', flexDirection: 'column', gap: '12px' 
-                                }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div>
-                                            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-0)' }}>{link.name}</div>
-                                            <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>Twin: {relatedTwin ? relatedTwin.name : 'Unknown'}</div>
-                                        </div>
-                                        <button 
-                                            onClick={() => deleteShareLink(link.id)}
-                                            style={{ 
-                                                background: 'none', border: 'none', color: '#ef4444', 
-                                                cursor: 'pointer', padding: '4px', borderRadius: '6px' 
-                                            }}
-                                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
-                                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                                            title="Delete Share Link"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                    
-                                    <div style={{ 
-                                        display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', 
-                                        background: 'var(--bg-0)', borderRadius: '8px', border: '1px solid var(--border)' 
-                                    }}>
-                                        <div style={{ flex: 1, fontSize: '11px', color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {linkUrl}
-                                        </div>
-                                        <button 
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(linkUrl);
-                                                setCopiedLink(link.id);
-                                                setTimeout(() => setCopiedLink(null), 2000);
-                                            }}
-                                            style={{ 
-                                                background: isCopied ? '#10d98d' : 'transparent', 
-                                                color: isCopied ? '#fff' : 'var(--text-2)', 
-                                                border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: '4px',
-                                                fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px'
-                                            }}
-                                        >
-                                            <Copy size={12} /> {isCopied ? 'Copied' : 'Copy'}
-                                        </button>
-                                    </div>
+                {/* Right Column (4 cols) */}
+                <div style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    
+                    {/* Bento Box: Connection Wizard */}
+                    <div style={{
+                        background: 'var(--bg-1)', borderRadius: '16px',
+                        border: '1px solid rgba(72,101,242,0.15)',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+                        overflow: 'hidden'
+                    }}>
+                        <div style={{ 
+                            padding: '20px 24px', borderBottom: '1px solid var(--border)',
+                            background: 'var(--bg-0)'
+                        }}>
+                            <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-0)', margin: 0 }}>Data Connections</h2>
+                        </div>
+                        <div style={{ padding: '24px' }}>
+                            <ConnectionWizard />
+                        </div>
+                    </div>
+
+                    {/* Bento Box: Active Share Links */}
+                    <div style={{
+                        background: 'var(--bg-1)', borderRadius: '16px',
+                        border: '1px solid var(--border)',
+                        boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+                        display: 'flex', flexDirection: 'column'
+                    }}>
+                        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
+                            <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-0)', margin: '0 0 4px 0' }}>Active Share Links</h2>
+                            <p style={{ fontSize: '13px', color: 'var(--text-1)', margin: 0 }}>
+                                {shareLinks.length} active connection{shareLinks.length !== 1 ? 's' : ''}
+                            </p>
+                        </div>
+                        <div style={{ padding: '16px' }}>
+                            {shareLinks.length === 0 ? (
+                                <p style={{ fontSize: '13px', color: 'var(--text-2)', textAlign: 'center', margin: '20px 0' }}>No active shared views.</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {shareLinks.map(link => {
+                                        const linkUrl = `${window.location.origin}/live/${link.id}`;
+                                        const isCopied = copiedLink === link.id;
+                                        
+                                        return (
+                                            <div key={link.id} style={{ 
+                                                padding: '12px', borderRadius: '10px', 
+                                                background: 'var(--bg-0)', border: '1px solid var(--border)' 
+                                            }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                                                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-0)' }}>{link.name}</span>
+                                                    <button 
+                                                        onClick={() => deleteShareLink(link.id)}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px' }}
+                                                        title="Revoke access"
+                                                    ><X size={14} /></button>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <div style={{ flex: 1, fontSize: '11px', color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {linkUrl}
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(linkUrl);
+                                                            setCopiedLink(link.id);
+                                                            setTimeout(() => setCopiedLink(null), 2000);
+                                                        }}
+                                                        style={{ 
+                                                            background: isCopied ? '#10d98d' : 'var(--bg-1)', 
+                                                            color: isCopied ? '#fff' : 'var(--text-1)', 
+                                                            border: '1px solid', borderColor: isCopied ? '#10d98d' : 'var(--border)',
+                                                            cursor: 'pointer', padding: '4px 8px', borderRadius: '6px',
+                                                            fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px',
+                                                            fontWeight: 500
+                                                        }}
+                                                    >
+                                                        {isCopied ? 'Copied' : 'Copy'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            );
-                        })}
+                            )}
+                        </div>
                     </div>
-                )}
 
-                <div className="divider" style={{ marginBottom: '40px' }} />
-
-                {/* Supported domains */}
-                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '24px' }}>
-                    Supported Domains
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px', marginBottom: '48px' }}>
-                    {Object.entries(DOMAINS).map(([key, domain]) => (
-                        <button
-                            key={key}
-                            className="glass"
-                            onClick={() => setStep(1)}
-                            style={{
-                                padding: '28px', textAlign: 'left', cursor: 'pointer',
-                                border: '1px solid var(--border)', borderRadius: '16px',
-                                background: 'rgba(255,255,255,0.5)', transition: 'all 0.25s ease',
-                                position: 'relative', overflow: 'hidden',
-                            }}
-                            onMouseEnter={e => {
-                                e.currentTarget.style.borderColor = domain.color + '55';
-                                e.currentTarget.style.transform = 'translateY(-3px)';
-                                e.currentTarget.style.boxShadow = `0 8px 32px ${domain.color}22`;
-                            }}
-                            onMouseLeave={e => {
-                                e.currentTarget.style.borderColor = 'var(--border)';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = 'none';
-                            }}
-                        >
-                            <div style={{
-                                position: 'absolute', top: 0, right: 0, width: '80px', height: '80px',
-                                background: `radial-gradient(circle at top right, ${domain.color}22, transparent)`,
-                                borderRadius: '0 0 0 80px',
-                            }} />
-                            <div style={{ fontSize: '36px', marginBottom: '14px' }}>{DOMAIN_ICONS[key]}</div>
-                            <div style={{ fontSize: '17px', fontWeight: 700, color: 'var(--text-0)', marginBottom: '8px' }}>{domain.label}</div>
-                            <div style={{ fontSize: '13px', color: 'var(--text-1)', lineHeight: 1.5, marginBottom: '16px' }}>{DOMAIN_DESCS[key]}</div>
-                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                                {domain.components.slice(0, 3).map(c => (
-                                    <span key={c.type} className="tag" style={{ fontSize: '10px' }}>{c.name}</span>
-                                ))}
-                                <span className="tag" style={{ fontSize: '10px' }}>+{Math.max(0, domain.components.length - 3)} more</span>
-                            </div>
-                        </button>
-                    ))}
-                </div>
-
-                {/* Feature pills */}
-                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-2)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '20px' }}>
-                    Platform Features
-                </div>
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    {[
-                        '🎯 Drag & Drop Placement',
-                        '🤖 AI-Assisted Prompts',
-                        '📊 Real-Time KPI Monitoring',
-                        '🔗 Component Connections',
-                        '⚡ Data Adapters (SQL, REST, MQTT)',
-                        '📐 Blueprint Catalog',
-                        '🔄 Auto-Save & Versioning',
-                        '📸 High-Res Screenshots',
-                    ].map(f => (
-                        <span key={f} className="glass-subtle" style={{ padding: '8px 16px', fontSize: '13px', color: 'var(--text-1)', borderRadius: '100px' }}>
-                            {f}
-                        </span>
-                    ))}
                 </div>
             </div>
         </div>

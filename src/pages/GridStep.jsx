@@ -3,7 +3,7 @@ import useTwinStore, { DOMAINS } from '../store/useTwinStore';
 import Grid2D from '../components/Grid2D';
 import Scene3D from '../components/Scene3D';
 import { layoutPrompt, saveLayoutState, checkBackendHealth, getLayoutSuggestions } from '../services/api';
-import { Bot } from 'lucide-react';
+import { Bot, Plus, Minus, Monitor, DoorClosed, Plane, Briefcase, Lock, BaggageClaim, Settings, Package, PenTool, Search, Box, Truck, Inbox, ArrowUpSquare } from 'lucide-react';
 
 const VIEWS = ['2D Grid', '3D Preview', 'Split'];
 
@@ -111,44 +111,52 @@ export default function GridStep() {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Toolbar */}
-      <div style={{ padding: '7px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg-1)', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0, flexWrap: 'wrap' }}>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg-1)', display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0, flexWrap: 'wrap' }}>
+        
         {/* Component palette */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, flexWrap: 'wrap', paddingRight: '16px', borderRight: '1px solid var(--border)' }}>
           <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0 }}>+ Add</span>
           {blueprints.map(bp => (
             <button key={bp.type} onClick={() => handleAdd(bp.type)} title={`Add ${bp.name}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '3px 9px', borderRadius: '7px', cursor: 'pointer', fontSize: '11px', fontWeight: 500, transition: 'all 0.18s',
-                background: justAdded === bp.type ? `${bp.color}30` : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${justAdded === bp.type ? bp.color : 'rgba(255,255,255,0.08)'}`,
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 500, transition: 'all 0.2s ease',
+                background: justAdded === bp.type ? `${bp.color}15` : 'var(--bg-0)',
+                border: `1px solid ${justAdded === bp.type ? bp.color : 'var(--border)'}`,
                 color: justAdded === bp.type ? bp.color : 'var(--text-1)',
-                transform: justAdded === bp.type ? 'scale(1.06)' : 'scale(1)',
+                transform: justAdded === bp.type ? 'scale(1.05)' : 'scale(1)',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background=`${bp.color}18`; e.currentTarget.style.borderColor=bp.color; e.currentTarget.style.color=bp.color; }}
-              onMouseLeave={e => { if(justAdded!==bp.type){ e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.08)'; e.currentTarget.style.color='var(--text-1)'; }}}>
-              <span>{getIcon(bp.type)}</span>{bp.name}
+              onMouseEnter={e => { e.currentTarget.style.background=`${bp.color}15`; e.currentTarget.style.borderColor=bp.color; e.currentTarget.style.color=bp.color; }}
+              onMouseLeave={e => { if(justAdded!==bp.type){ e.currentTarget.style.background='var(--bg-0)'; e.currentTarget.style.borderColor='var(--border)'; e.currentTarget.style.color='var(--text-1)'; }}}>
+              <span style={{ display: 'flex', alignItems: 'center' }}>{getIcon(bp.type)}</span>{bp.name}
             </button>
           ))}
         </div>
 
-        {/* View toggle */}
-        <div style={{ display: 'flex', gap: '2px', background: 'var(--bg-0)', borderRadius: '7px', padding: '2px', flexShrink: 0 }}>
-          {VIEWS.map(v => (
-            <button key={v} onClick={() => setView(v)} style={{ padding: '3px 9px', borderRadius: '5px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 500, transition: 'all 0.15s', background: view === v ? 'var(--accent)' : 'transparent', color: view === v ? '#fff' : 'var(--text-2)' }}>{v}</button>
-          ))}
-        </div>
+        {/* Tools container */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* View toggle */}
+          <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-2)', borderRadius: '6px', padding: '3px', flexShrink: 0 }}>
+            {VIEWS.map(v => (
+              <button key={v} onClick={() => setView(v)} style={{ padding: '4px 12px', borderRadius: '4px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: 600, transition: 'all 0.15s', background: view === v ? 'var(--bg-1)' : 'transparent', color: view === v ? 'var(--text-0)' : 'var(--text-2)', boxShadow: view === v ? '0 1px 3px rgba(0,0,0,0.1)' : 'none' }}>{v}</button>
+            ))}
+          </div>
 
-        {/* AI Prompt toggle */}
-        <button onClick={() => setShowAiBar(p => !p)} style={{ padding: '3px 11px', borderRadius: '7px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', flexShrink: 0,
-          background: showAiBar ? 'rgba(72,101,242,0.15)' : 'transparent',
-          color: showAiBar ? 'var(--accent)' : 'var(--text-2)' }}>
-          <Bot size={14} /> AI Layout
-          <span style={{ fontSize: '8px', padding: '1px 4px', borderRadius: '4px', background: backendOnline === true ? 'rgba(16,217,141,0.2)' : backendOnline === null ? 'transparent' : 'rgba(245,158,11,0.2)', color: backendOnline === true ? '#10d98d' : backendOnline === null ? 'var(--text-2)' : '#f59e0b' }}>
-            {backendOnline === true ? 'live' : backendOnline === null ? '...' : 'mock'}
-          </span>
-        </button>
+          <div style={{ width: '1px', height: '24px', background: 'var(--border)' }} />
 
-        <div style={{ padding: '3px 9px', borderRadius: '16px', background: 'rgba(72,101,242,0.1)', border: '1px solid rgba(72,101,242,0.2)', fontSize: '11px', fontWeight: 600, color: 'var(--accent)', flexShrink: 0 }}>
-          {components.length} components
+          {/* AI Prompt toggle */}
+          <button onClick={() => setShowAiBar(p => !p)} style={{ padding: '5px 12px', borderRadius: '6px', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', flexShrink: 0, transition: 'all 0.2s ease',
+            background: showAiBar ? 'var(--accent-dim)' : 'var(--bg-0)',
+            color: showAiBar ? 'var(--accent)' : 'var(--text-1)' }}>
+            <Bot size={16} /> AI Layout
+            <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '4px', background: backendOnline === true ? 'rgba(16,217,141,0.15)' : backendOnline === null ? 'transparent' : 'rgba(245,158,11,0.15)', color: backendOnline === true ? '#10d98d' : backendOnline === null ? 'var(--text-2)' : '#f59e0b' }}>
+              {backendOnline === true ? 'live' : backendOnline === null ? '...' : 'mock'}
+            </span>
+          </button>
+
+          <div style={{ width: '1px', height: '24px', background: 'var(--border)' }} />
+
+          <div style={{ padding: '5px 10px', borderRadius: '6px', background: 'var(--accent-dim)', border: '1px solid rgba(72,101,242,0.2)', fontSize: '11px', fontWeight: 600, color: 'var(--accent)', flexShrink: 0 }}>
+            {components.length} components
+          </div>
         </div>
       </div>
 
@@ -209,17 +217,17 @@ export default function GridStep() {
                 <span>Drag to reposition</span>
                 <span style={{ opacity: 0.3 }}>|</span>
                 <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>Area Size:</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Width 
-                    <button onClick={() => resizeGrid(gridCols - 1, gridRows)} disabled={gridCols <= minCols} style={{ background: 'var(--bg-2)', opacity: gridCols <= minCols ? 0.3 : 1, border: '1px solid var(--border)', borderRadius: '2px', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: gridCols <= minCols ? 'not-allowed' : 'pointer', color: 'var(--text-1)', padding: 0 }}>-</button>
-                    <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{gridCols}</span>
-                    <button onClick={() => resizeGrid(gridCols + 1, gridRows)} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '2px', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-1)', padding: 0 }}>+</button>
+                    <button onClick={() => resizeGrid(gridCols - 1, gridRows)} disabled={gridCols <= minCols} style={{ background: 'var(--bg-1)', opacity: gridCols <= minCols ? 0.5 : 1, border: '1px solid var(--border)', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: gridCols <= minCols ? 'not-allowed' : 'pointer', color: 'var(--text-0)', padding: 0, boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s ease' }} onMouseEnter={e => {if(gridCols>minCols) e.currentTarget.style.borderColor='var(--accent)'}} onMouseLeave={e => {e.currentTarget.style.borderColor='var(--border)'}}><Minus size={12} /></button>
+                    <span style={{ fontWeight: 600, color: 'var(--text-0)', minWidth: '16px', textAlign: 'center' }}>{gridCols}</span>
+                    <button onClick={() => resizeGrid(gridCols + 1, gridRows)} style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-0)', padding: 0, boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s ease' }} onMouseEnter={e => {e.currentTarget.style.borderColor='var(--accent)'}} onMouseLeave={e => {e.currentTarget.style.borderColor='var(--border)'}}><Plus size={12} /></button>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     Height
-                    <button onClick={() => resizeGrid(gridCols, gridRows - 1)} disabled={gridRows <= minRows} style={{ background: 'var(--bg-2)', opacity: gridRows <= minRows ? 0.3 : 1, border: '1px solid var(--border)', borderRadius: '2px', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: gridRows <= minRows ? 'not-allowed' : 'pointer', color: 'var(--text-1)', padding: 0 }}>-</button>
-                    <span style={{ fontWeight: 600, color: 'var(--text-1)' }}>{gridRows}</span>
-                    <button onClick={() => resizeGrid(gridCols, gridRows + 1)} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '2px', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-1)', padding: 0 }}>+</button>
+                    <button onClick={() => resizeGrid(gridCols, gridRows - 1)} disabled={gridRows <= minRows} style={{ background: 'var(--bg-1)', opacity: gridRows <= minRows ? 0.5 : 1, border: '1px solid var(--border)', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: gridRows <= minRows ? 'not-allowed' : 'pointer', color: 'var(--text-0)', padding: 0, boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s ease' }} onMouseEnter={e => {if(gridRows>minRows) e.currentTarget.style.borderColor='var(--accent)'}} onMouseLeave={e => {e.currentTarget.style.borderColor='var(--border)'}}><Minus size={12} /></button>
+                    <span style={{ fontWeight: 600, color: 'var(--text-0)', minWidth: '16px', textAlign: 'center' }}>{gridRows}</span>
+                    <button onClick={() => resizeGrid(gridCols, gridRows + 1)} style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '4px', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-0)', padding: 0, boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s ease' }} onMouseEnter={e => {e.currentTarget.style.borderColor='var(--accent)'}} onMouseLeave={e => {e.currentTarget.style.borderColor='var(--border)'}}><Plus size={12} /></button>
                 </div>
               </div>
             </div>
@@ -249,6 +257,26 @@ export default function GridStep() {
 }
 
 function getIcon(type) {
-  const m = { terminal:'🏢',gate:'🚪',runway:'✈️',checkin_desk:'🖥️',security_zone:'🔒',baggage_claim:'🧳',hydraulic_press:'⚙️',conveyor_belt:'📦',cnc_machine:'🔩',assembly_station:'🔧',quality_control:'🔍',warehouse_rack:'📚',storage_rack:'📚',picking_zone:'🚜',reception_dock:'📥',shipping_dock:'📤',conveyor:'📦',sorter:'🔄' };
-  return m[type] || '⬛';
+  const size = 14;
+  switch (type) {
+    case 'terminal': return <Monitor size={size} />;
+    case 'gate': return <DoorClosed size={size} />;
+    case 'runway': return <Plane size={size} />;
+    case 'checkin_desk': return <Briefcase size={size} />;
+    case 'security_zone': return <Lock size={size} />;
+    case 'baggage_claim': return <BaggageClaim size={size} />;
+    case 'hydraulic_press': return <Settings size={size} />;
+    case 'conveyor_belt': return <Package size={size} />;
+    case 'cnc_machine': return <Settings size={size} />;
+    case 'assembly_station': return <PenTool size={size} />;
+    case 'quality_control': return <Search size={size} />;
+    case 'warehouse_rack':
+    case 'storage_rack': return <Box size={size} />;
+    case 'picking_zone': return <Truck size={size} />;
+    case 'reception_dock': return <Inbox size={size} />;
+    case 'shipping_dock': return <ArrowUpSquare size={size} />;
+    case 'conveyor': return <Package size={size} />;
+    case 'sorter': return <Settings size={size} />;
+    default: return <Box size={size} />;
+  }
 }

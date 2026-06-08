@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAdminUsers, updateAdminUserRole, deleteAdminUser, resetAdminUserPassword, createAdminUser } from '../../services/api';
-import { Trash2, Shield, ShieldAlert, KeyRound, UserPlus, Search } from 'lucide-react';
+import { Trash2, Shield, ShieldAlert, KeyRound, UserPlus, Search, Users } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 import useToastStore from '../../store/useToastStore';
 import useHotkeys from '../../hooks/useHotkeys';

@@ -175,7 +175,7 @@ const useTwinStore = create((set, get) => ({
     gridRows: 0,
     minCols: 1,
     minRows: 1,
-    cellSize: 6,
+    cellSize: 2,
 
     twins: [],
     activeTwinId: null,
@@ -215,7 +215,7 @@ const useTwinStore = create((set, get) => ({
     setDomain: (domain) => set({ selectedDomain: domain }),
     setTwinName: (name) => set({ twinName: name }),
     setDimensions: (width, length) => {
-        const cellSize = 6;
+        const cellSize = 2;
         set({ width, length, gridCols: Math.ceil(width / cellSize), gridRows: Math.ceil(length / cellSize), cellSize });
     },
     resizeGrid: (cols, rows) => {
@@ -822,7 +822,7 @@ const useTwinStore = create((set, get) => ({
     loadTwinFromDb: async (twinId, targetStep = 5, preloadedState = null) => {
         try {
             const state = preloadedState || await getTwin(twinId);
-            const cellSize = 6;
+            const cellSize = 2;
             set({
                 activeTwinId: twinId,
                 twinName: state.name,

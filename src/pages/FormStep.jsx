@@ -15,7 +15,7 @@ export default function FormStep() {
     const [localWidth, setLocalWidth] = useState(width || 60);
     const [localLength, setLocalLength] = useState(length || 40);
 
-    const cellSize = 6;
+    const cellSize = 2;
     const gridCols = Math.ceil(localWidth / cellSize);
     const gridRows = Math.ceil(localLength / cellSize);
     const adjustedW = gridCols * cellSize;

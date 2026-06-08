@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import useTwinStore, { DOMAINS } from '../store/useTwinStore';
-import { ChevronRight, ArrowLeft, Check, Factory, Plane, Package } from 'lucide-react';
+import { ChevronRight, ArrowLeft, Check, Factory, Plane, Package, AlertTriangle } from 'lucide-react';
 
 const DOMAIN_ICONS = { 
     factory: <Factory size={32} strokeWidth={1.5} />, 
@@ -15,13 +15,15 @@ export default function FormStep() {
     const [localWidth, setLocalWidth] = useState(width || 60);
     const [localLength, setLocalLength] = useState(length || 40);
 
-    const cellSize = 2;
+    const cellSize = 6;
     const gridCols = Math.ceil(localWidth / cellSize);
     const gridRows = Math.ceil(localLength / cellSize);
     const adjustedW = gridCols * cellSize;
     const adjustedL = gridRows * cellSize;
 
-    const canProceed = localDomain && localName.trim() && localWidth > 0 && localLength > 0;
+    const widthError = localWidth < 12;
+    const lengthError = localLength < 12;
+    const canProceed = localDomain && localName.trim() && !widthError && !lengthError;
 
     const handleNext = () => {
         setDomain(localDomain);
@@ -79,23 +81,12 @@ export default function FormStep() {
                                 {Object.entries(DOMAINS).map(([key, domain]) => (
                                     <button
                                         key={key}
+                                        className={`domain-card ${localDomain === key ? 'selected' : ''}`}
                                         onClick={() => setLocalDomain(key)}
                                         style={{
-                                            padding: '24px 16px',
-                                            borderRadius: '12px',
-                                            border: localDomain === key
-                                                ? `2px solid ${domain.color}`
-                                                : '1px solid var(--border)',
-                                            background: localDomain === key
-                                                ? `rgba(${hexToRgb(domain.color)},0.05)`
-                                                : 'var(--bg-0)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '16px',
-                                            transition: 'all 0.2s ease',
-                                            position: 'relative',
+                                            borderColor: localDomain === key ? domain.color : undefined,
+                                            borderWidth: localDomain === key ? '2px' : undefined,
+                                            background: localDomain === key ? `rgba(${hexToRgb(domain.color)},0.05)` : undefined,
                                         }}
                                     >
                                         {localDomain === key && (
@@ -132,24 +123,26 @@ export default function FormStep() {
                                 <div>
                                     <div style={{ fontSize: '13px', color: 'var(--text-1)', marginBottom: '8px', fontWeight: 500 }}>Width (meters)</div>
                                     <input
-                                        className="input"
+                                        className={`input ${widthError ? 'error' : ''}`}
                                         type="number"
                                         min={12}
                                         value={localWidth}
                                         onChange={e => setLocalWidth(Number(e.target.value))}
                                         style={{ background: 'var(--bg-3)', fontSize: '15px', padding: '14px 16px' }}
                                     />
+                                    {widthError && <div className="error-text"><AlertTriangle size={12} /> Minimum 12m</div>}
                                 </div>
                                 <div>
                                     <div style={{ fontSize: '13px', color: 'var(--text-1)', marginBottom: '8px', fontWeight: 500 }}>Length (meters)</div>
                                     <input
-                                        className="input"
+                                        className={`input ${lengthError ? 'error' : ''}`}
                                         type="number"
                                         min={12}
                                         value={localLength}
                                         onChange={e => setLocalLength(Number(e.target.value))}
                                         style={{ background: 'var(--bg-3)', fontSize: '15px', padding: '14px 16px' }}
                                     />
+                                    {lengthError && <div className="error-text"><AlertTriangle size={12} /> Minimum 12m</div>}
                                 </div>
                             </div>
                         </div>
@@ -161,7 +154,15 @@ export default function FormStep() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                                 <div>
                                     <div style={{ fontSize: '13px', color: 'var(--text-2)', marginBottom: '4px', fontWeight: 500 }}>Adjusted Area</div>
-                                    <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-0)', letterSpacing: '-0.02em' }}>
+                                    <div style={{ 
+                                        fontSize: '28px', 
+                                        fontWeight: 900, 
+                                        background: 'linear-gradient(135deg, var(--accent), var(--orange))',
+                                        WebkitBackgroundClip: 'text',
+                                        WebkitTextFillColor: 'transparent',
+                                        letterSpacing: '-0.02em',
+                                        display: 'inline-block'
+                                    }}>
                                         {adjustedW}m × {adjustedL}m
                                     </div>
                                 </div>

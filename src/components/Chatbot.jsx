@@ -109,7 +109,7 @@ export default function Chatbot() {
       {/* Header */}
       <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'linear-gradient(135deg,#4865f2,#f4723e)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: '#fff' }}><Bot size={18} /></div>
+          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'var(--accent-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', color: 'var(--accent)' }}><Bot size={18} /></div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               Analytics AI
@@ -126,14 +126,8 @@ export default function Chatbot() {
               {selComp ? `Focused on: ${selComp.name}` : 'Analyzing all components'}
             </div>
           </div>
-          {/* KPI badge row & New Chat */}
+          {/* New Chat Button */}
           <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-            {[['#10d98d', okCount, 'OK'], ['#f59e0b', warnCount, 'WARN'], ['#ef4444', critCount, 'CRIT']].map(([c, n, l]) => (
-              <div key={l} style={{ padding: '2px 6px', borderRadius: '5px', background: `${c}18`, border: `1px solid ${c}30`, textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: c, lineHeight: 1 }}>{n}</div>
-                <div style={{ fontSize: '8px', color: 'var(--text-2)' }}>{l}</div>
-              </div>
-            ))}
             <button 
               onClick={clearNlqMessages}
               title="Nouvelle discussion"
@@ -161,7 +155,7 @@ export default function Chatbot() {
             <div style={{
               maxWidth: '96%', padding: '9px 13px',
               borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
-              background: msg.role === 'user' ? 'linear-gradient(135deg,#4865f2,#f4723e)' : 'var(--bg-0)',
+              background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg-0)',
               border: msg.role === 'assistant' ? '1px solid var(--border)' : 'none',
               fontSize: '12px', lineHeight: 1.6, color: msg.role === 'user' ? '#fff' : 'var(--text-1)',
               whiteSpace: 'pre-wrap',

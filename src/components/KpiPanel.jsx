@@ -120,7 +120,7 @@ export default function KpiPanel() {
           const compNames = components.filter(c => c.kpiIds?.includes(kpi.id)).map(c => c.name);
           return (
             <div key={kpi.id}
-              style={{ marginBottom: '8px', padding: '10px 12px', borderRadius: '10px', background: 'var(--bg-0)', border: `1px solid ${color}25`, borderLeft: `3px solid ${color}`, position: 'relative', overflow: 'hidden' }}>
+              style={{ marginBottom: '8px', padding: '10px 12px', borderRadius: '10px', background: 'var(--bg-0)', border: `1px solid ${color}25`, position: 'relative', overflow: 'hidden' }}>
               {kpi.status === 'red' && (
                 <div style={{ position: 'absolute', inset: 0, background: 'rgba(239,68,68,0.04)', animation: 'pulse-kpi 1.5s ease-in-out infinite', pointerEvents: 'none' }} />
               )}

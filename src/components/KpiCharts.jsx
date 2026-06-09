@@ -26,8 +26,8 @@ const STATUS_COLOR = { green: '#10d98d', orange: '#f59e0b', red: '#ef4444' };
 const Tip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
-        <div style={{ background: '#0d1117', border: '1px solid #1e3a5f', borderRadius: '8px', padding: '8px 12px', fontSize: '11px' }}>
-            <div style={{ color: '#64748b', marginBottom: '4px' }}>{label}</div>
+        <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border)', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', borderRadius: '8px', padding: '8px 12px', fontSize: '11px' }}>
+            <div style={{ color: 'var(--text-1)', marginBottom: '4px' }}>{label}</div>
             {payload.map((p, i) => (
                 <div key={i} style={{ color: p.color, fontWeight: 600 }}>
                     {p.name}: {typeof p.value === 'number' ? p.value.toFixed(2) : p.value}
@@ -110,14 +110,14 @@ export default function KpiCharts() {
             </div>
 
             {/* KPI summary cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '7px', flexShrink: 0 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '7px', flexShrink: 0 }}>
                 {displayKpis.map(kpi => {
                     const sc = STATUS_COLOR[kpi.status] || '#4865f2';
                     return (
-                        <div key={kpi.id} style={{ padding: '8px', background: 'var(--bg-0)', border: `1px solid ${sc}30`, borderTop: `2px solid ${sc}`, borderRadius: '8px' }}>
+                        <div key={kpi.id} style={{ padding: '8px', background: 'var(--bg-0)', border: `1px solid ${sc}30`, borderRadius: '8px' }}>
                             <div style={{ fontSize: '9px', color: 'var(--text-2)', marginBottom: '3px', lineHeight: 1.3 }}>{kpi.name}</div>
                             <div style={{ fontSize: '15px', fontWeight: 800, color: sc }}>
-                                {typeof kpi.value === 'number' ? kpi.value.toFixed(1) : kpi.value}
+                                {typeof kpi.value === 'number' ? Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(kpi.value) : kpi.value}
                                 <span style={{ fontSize: '9px', fontWeight: 400, marginLeft: '2px', color: 'var(--text-2)' }}>{kpi.unit}</span>
                             </div>
                             <div style={{ fontSize: '9px', color: sc, textTransform: 'uppercase', fontWeight: 700 }}>{kpi.status}</div>
@@ -189,7 +189,7 @@ export default function KpiCharts() {
                             <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-1)' }}>{kpi.name}</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '14px', fontWeight: 800, color: sc }}>
-                                    {typeof kpi.value === 'number' ? kpi.value.toFixed(1) : kpi.value}
+                                    {typeof kpi.value === 'number' ? Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(kpi.value) : kpi.value}
                                     <span style={{ fontSize: '10px', fontWeight: 400, marginLeft: '2px', color: 'var(--text-2)' }}>{kpi.unit}</span>
                                 </span>
                                 <span style={{ fontSize: '9px', padding: '2px 7px', borderRadius: '10px', background: `${sc}1a`, color: sc, fontWeight: 700, textTransform: 'uppercase' }}>

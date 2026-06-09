@@ -26,7 +26,7 @@ export default function ExportModal({ isOpen, onClose, onExport, exporting }) {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Download size={20} /> Exporter le Jumeau Numérique
+                        <Download size={20} /> Export Digital Twin
                     </h2>
                     <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-2)' }}>
                         <X size={20} />
@@ -38,8 +38,8 @@ export default function ExportModal({ isOpen, onClose, onExport, exporting }) {
                         <input type="checkbox" checked={exportJson} onChange={e => setExportJson(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
                         <FileJson size={20} style={{ color: '#f59e0b' }} />
                         <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, fontSize: '14px' }}>Données JSON</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>Configuration, composants et états des KPIs</div>
+                            <div style={{ fontWeight: 600, fontSize: '14px' }}>JSON Data</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>Configuration, components, and KPI states</div>
                         </div>
                     </label>
 
@@ -47,8 +47,8 @@ export default function ExportModal({ isOpen, onClose, onExport, exporting }) {
                         <input type="checkbox" checked={export3D} onChange={e => setExport3D(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
                         <Box size={20} style={{ color: '#10d98d' }} />
                         <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, fontSize: '14px' }}>Modèle 3D</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>Fichier .glb standard de la scène 3D actuelle</div>
+                            <div style={{ fontWeight: 600, fontSize: '14px' }}>3D Model</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>Standard .glb file of the current 3D scene</div>
                         </div>
                     </label>
 
@@ -56,22 +56,22 @@ export default function ExportModal({ isOpen, onClose, onExport, exporting }) {
                         <input type="checkbox" checked={exportPdf} onChange={e => setExportPdf(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
                         <FileText size={20} style={{ color: '#ef4444' }} />
                         <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 600, fontSize: '14px' }}>Rapport PDF (Généré par IA)</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>Résumé PDF professionnel avec analyse de l'IA</div>
+                            <div style={{ fontWeight: 600, fontSize: '14px' }}>PDF Report (AI Generated)</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-2)' }}>Professional PDF summary with AI analysis</div>
                         </div>
                     </label>
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                     <button onClick={onClose} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-1)', fontWeight: 600, cursor: 'pointer' }}>
-                        Annuler
+                        Cancel
                     </button>
                     <button 
                         onClick={handleExport} 
                         disabled={exporting || (!exportJson && !export3D && !exportPdf)}
                         style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: (exporting || (!exportJson && !export3D && !exportPdf)) ? 0.6 : 1 }}
                     >
-                        {exporting ? <><Download size={16} style={{ animation: 'bounce 1s infinite' }} /> Export en cours…</> : 'Exporter la sélection'}
+                        {exporting ? <><Download size={16} style={{ animation: 'bounce 1s infinite' }} /> Exporting…</> : 'Export Selection'}
                     </button>
                 </div>
             </div>

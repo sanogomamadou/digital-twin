@@ -228,7 +228,7 @@ export default function TwinView() {
             {/* ── Alert dropdown ─────────────────────────────────────────── */}
             {alertsOpen && critKpis.length > 0 && (
                 <div style={{ position: 'absolute', top: '90px', right: '14px', zIndex: 100, width: '290px', background: 'var(--bg-1)', border: '1px solid #ef4444', borderRadius: '10px', padding: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#ef4444', marginBottom: '8px' }}>🚨 Critical Alerts</div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#ef4444', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertOctagon size={14} /> Critical Alerts</div>
                     {critKpis.map(k => (
                         <div key={k.id} style={{ padding: '6px 8px', marginBottom: '5px', borderRadius: '7px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', fontSize: '11px' }}>
                             <span style={{ fontWeight: 700, color: '#ef4444' }}>{k.name}</span>

@@ -57,7 +57,7 @@ export default function ShareModal({ twinId, onClose }) {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Share2 size={20} /> Partager le Jumeau Numérique
+                        <Share2 size={20} /> Share Digital Twin
                     </h2>
                     <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-2)' }}>
                         <X size={20} />
@@ -73,20 +73,20 @@ export default function ShareModal({ twinId, onClose }) {
                 {!generatedLink ? (
                     <>
                         <div style={{ marginBottom: '16px' }}>
-                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-1)' }}>Nom du partage</label>
+                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-1)' }}>Share Name</label>
                             <input
                                 type="text"
-                                placeholder="ex: Vue Manager"
+                                placeholder="e.g. Manager View"
                                 value={name}
                                 onChange={e => setName(e.target.value)}
                                 style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-1)', fontSize: '14px', boxSizing: 'border-box' }}
                             />
                         </div>
                         <div style={{ marginBottom: '24px' }}>
-                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-1)' }}>Mot de passe</label>
+                            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-1)' }}>Password</label>
                             <input
                                 type="password"
-                                placeholder="Définir un mot de passe sécurisé"
+                                placeholder="Set a secure password"
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                                 style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-1)', fontSize: '14px', boxSizing: 'border-box' }}
@@ -95,21 +95,21 @@ export default function ShareModal({ twinId, onClose }) {
                         
                         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '24px' }}>
                             <button onClick={onClose} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-1)', fontWeight: 600, cursor: 'pointer' }}>
-                                Annuler
+                                Cancel
                             </button>
                             <button 
                                 onClick={handleCreate} 
                                 disabled={loading}
                                 style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: loading ? 0.6 : 1 }}
                             >
-                                {loading ? 'Création en cours...' : 'Créer le lien'}
+                                {loading ? 'Creating...' : 'Create Link'}
                             </button>
                         </div>
                     </>
                 ) : (
                     <>
                         <p style={{ fontSize: '14px', color: 'var(--text-1)', marginBottom: '16px' }}>
-                            Votre lien de partage est prêt. Toute personne disposant de ce lien et du mot de passe pourra visualiser le jumeau numérique.
+                            Your share link is ready. Anyone with this link and the password can view the digital twin.
                         </p>
                         
                         <div style={{
@@ -129,13 +129,13 @@ export default function ShareModal({ twinId, onClose }) {
                                     fontSize: '13px', fontWeight: 600
                                 }}
                             >
-                                {copied ? <><Check size={16} /> Copié</> : <><Copy size={16} /> Copier</>}
+                                {copied ? <><Check size={16} /> Copied</> : <><Copy size={16} /> Copy</>}
                             </button>
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '24px' }}>
                             <button onClick={onClose} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-0)', color: 'var(--text-1)', fontWeight: 600, cursor: 'pointer' }}>
-                                Fermer
+                                Close
                             </button>
                         </div>
                     </>

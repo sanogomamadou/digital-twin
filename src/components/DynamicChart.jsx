@@ -5,6 +5,7 @@ import {
     ComposedChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
     ResponsiveContainer, ReferenceLine,
 } from 'recharts';
+import { Lightbulb } from 'lucide-react';
 
 const COLORS = ['#4865f2', '#10d98d', '#f59e0b', '#f4723e', '#ef4444', '#06b6d4', '#f97316'];
 
@@ -193,8 +194,8 @@ export default function DynamicChart({ config, height = 220 }) {
                 {chart}
             </ResponsiveContainer>
             {config.insight && (
-                <div style={{ marginTop: '6px', fontSize: '10px', color: '#94a3c8', padding: '5px 10px', background: 'rgba(72,101,242,0.06)', borderRadius: '5px', borderLeft: '2px solid #4865f2' }}>
-                    💡 {config.insight}
+                <div style={{ marginTop: '6px', fontSize: '10px', color: '#94a3c8', padding: '5px 10px', background: 'rgba(72,101,242,0.06)', borderRadius: '5px', borderLeft: '2px solid #4865f2', display: 'flex', alignItems: 'center' }}>
+                    <Lightbulb size={12} style={{ marginRight: '6px', color: 'var(--accent)' }} /> {config.insight}
                 </div>
             )}
         </div>

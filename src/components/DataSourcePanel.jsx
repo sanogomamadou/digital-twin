@@ -10,6 +10,7 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import useTwinStore from '../store/useTwinStore';
+import { Plug, FolderOpen, CheckCircle2, Factory, Plane, Package, Loader2, Search, Check, AlertTriangle, AlertOctagon, Radio, Activity, Edit2, PowerOff, ArrowLeft, Play } from 'lucide-react';
 
 const BASE_URL = '';  // uses Vite proxy
 
@@ -116,8 +117,8 @@ export default function DataSourcePanel() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-1)', overflow: 'hidden' }}>
       {/* Header */}
       <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)', marginBottom: '4px' }}>
-          🔌 Data Source
+        <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-0)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Plug size={14} /> Data Source
         </div>
         {/* Step indicators */}
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -143,9 +144,9 @@ export default function DataSourcePanel() {
               style={{ border: `2px dashed ${dragOver ? 'var(--accent)' : 'var(--border)'}`, borderRadius: '10px', padding: '24px 16px', textAlign: 'center', cursor: 'pointer', marginBottom: '12px',
                 background: dragOver ? 'rgba(72,101,242,0.06)' : 'var(--bg-0)', transition: 'all 0.15s' }}>
               <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileDrop} style={{ display: 'none' }} />
-              <div style={{ fontSize: '26px', marginBottom: '8px' }}>📂</div>
+              <div style={{ fontSize: '26px', marginBottom: '8px', display: 'flex', justifyContent: 'center' }}><FolderOpen size={26} /></div>
               {file
-                ? <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent)' }}>✅ {file.name}</div>
+                ? <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}><CheckCircle2 size={12} /> {file.name}</div>
                 : <>
                   <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-1)', marginBottom: '4px' }}>Drop your data file here</div>
                   <div style={{ fontSize: '10px', color: 'var(--text-2)' }}>One CSV or Excel with all KPI columns · .csv · .xlsx · .xls</div>
@@ -166,12 +167,12 @@ export default function DataSourcePanel() {
             <div style={{ marginBottom: '12px' }}>
               <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-2)', marginBottom: '5px', textTransform: 'uppercase' }}>Sample files</div>
               {[
-                ['🏭 Factory', 'factory_data.csv', 'machine_temperature_c, production_throughput, ...'],
-                ['✈️ Airport', 'airport_data.csv', 'passenger_flow, security_wait, gate_util, ...'],
-                ['📦 Warehouse', 'warehouse_data.csv', 'pick_rate, rack_fill, dock_util, ...'],
-              ].map(([icon, name, cols]) => (
+                [<Factory size={10} />, 'Factory', 'factory_data.csv', 'machine_temperature_c, production_throughput, ...'],
+                [<Plane size={10} />, 'Airport', 'airport_data.csv', 'passenger_flow, security_wait, gate_util, ...'],
+                [<Package size={10} />, 'Warehouse', 'warehouse_data.csv', 'pick_rate, rack_fill, dock_util, ...'],
+              ].map(([icon, label, name, cols]) => (
                 <div key={name} style={{ padding: '7px 10px', marginBottom: '4px', borderRadius: '7px', background: 'var(--bg-0)', border: '1px solid var(--border)', fontSize: '10px' }}>
-                  <div style={{ fontWeight: 600, color: 'var(--text-1)' }}>{icon} {name}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: '4px' }}>{icon} {label}</div>
                   <div style={{ color: 'var(--text-2)', marginTop: '2px' }}>{cols}</div>
                 </div>
               ))}
@@ -181,8 +182,8 @@ export default function DataSourcePanel() {
             {error && <div style={{ fontSize: '11px', color: '#ef4444', marginBottom: '10px', padding: '6px 10px', background: 'rgba(239,68,68,0.08)', borderRadius: '6px' }}>{error}</div>}
 
             <button onClick={handleUpload} disabled={!file || loading}
-              style={{ width: '100%', padding: '10px', borderRadius: '10px', background: file ? 'linear-gradient(135deg,#4865f2,#f4723e)' : 'var(--bg-0)', border: '1px solid var(--border)', color: file ? '#fff' : 'var(--text-2)', fontSize: '12px', fontWeight: 700, cursor: file ? 'pointer' : 'not-allowed' }}>
-              {loading ? '⏳ Analysing file…' : '🔍 Upload & Discover Columns'}
+              style={{ width: '100%', padding: '10px', borderRadius: '10px', background: file ? 'linear-gradient(135deg,#4865f2,#f4723e)' : 'var(--bg-0)', border: '1px solid var(--border)', color: file ? '#fff' : 'var(--text-2)', fontSize: '12px', fontWeight: 700, cursor: file ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {loading ? <><Loader2 size={12} className="spin" /> Analysing file…</> : <><Search size={12} /> Upload & Discover Columns</>}
             </button>
           </>
         )}
@@ -192,8 +193,8 @@ export default function DataSourcePanel() {
           <>
             {/* File info */}
             <div style={{ padding: '8px 10px', borderRadius: '8px', background: 'rgba(16,217,141,0.07)', border: '1px solid rgba(16,217,141,0.2)', marginBottom: '12px' }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#10d98d' }}>
-                ✅ {schema.fileName || file?.name} — {schema.rowCount} rows · {schema.columns?.length} KPI columns
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#10d98d', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <CheckCircle2 size={12} /> {schema.fileName || file?.name} — {schema.rowCount} rows · {schema.columns?.length} KPI columns
               </div>
               {schema.timestampColumn && (
                 <div style={{ fontSize: '10px', color: 'var(--text-2)', marginTop: '2px' }}>
@@ -222,7 +223,7 @@ export default function DataSourcePanel() {
                         </div>
                       )}
                     </div>
-                    {a.component_id && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '8px', background: 'rgba(72,101,242,0.15)', color: 'var(--accent)', border: '1px solid rgba(72,101,242,0.3)' }}>✓ assigned</span>}
+                    {a.component_id && <span style={{ fontSize: '9px', padding: '2px 6px', borderRadius: '8px', background: 'rgba(72,101,242,0.15)', color: 'var(--accent)', border: '1px solid rgba(72,101,242,0.3)', display: 'flex', alignItems: 'center', gap: '2px' }}><Check size={9} /> assigned</span>}
                   </div>
 
                   {/* Row 1: Component selector */}
@@ -251,7 +252,7 @@ export default function DataSourcePanel() {
                         placeholder="°C"
                         style={{ width: '100%', background: 'var(--bg-1)', border: '1px solid var(--border)', borderRadius: '6px', padding: '5px', color: 'var(--text-0)', fontSize: '10px', outline: 'none', boxSizing: 'border-box' }} />
                     </div>
-                    {[['🟡 Warn ≥', 'orange'], ['🔴 Critical ≥', 'red']].map(([label, key]) => (
+                    {[[<div style={{display:'flex', alignItems:'center', gap:'4px'}}><AlertTriangle size={10} color="#f59e0b" /> Warn ≥</div>, 'orange'], [<div style={{display:'flex', alignItems:'center', gap:'4px'}}><AlertOctagon size={10} color="#ef4444" /> Critical ≥</div>, 'red']].map(([label, key]) => (
                       <div key={key}>
                         <label style={{ fontSize: '9px', color: 'var(--text-2)', display: 'block', marginBottom: '2px' }}>{label}</label>
                         <input type="number" value={a.rules?.[key]?.[0] || ''}
@@ -282,7 +283,7 @@ export default function DataSourcePanel() {
         {/* STEP 3: Live streaming */}
         {step === 'live' && (
           <div style={{ textAlign: 'center', padding: '16px 0' }}>
-            <div style={{ fontSize: '36px', marginBottom: '10px' }}>📡</div>
+            <div style={{ marginBottom: '10px', display: 'flex', justifyContent: 'center' }}><Radio size={36} color="#10d98d" /></div>
             <div style={{ fontSize: '14px', fontWeight: 700, color: '#10d98d', marginBottom: '6px' }}>Streaming Live Data</div>
             <div style={{ fontSize: '11px', color: 'var(--text-2)', marginBottom: '16px' }}>
               {assignedCount} KPI column{assignedCount !== 1 ? 's' : ''} streaming to your digital twin via WebSocket.<br/>
@@ -297,19 +298,19 @@ export default function DataSourcePanel() {
                     <span style={{ color: 'var(--accent)', fontFamily: 'monospace' }}>{col}</span>
                     <span style={{ color: 'var(--text-2)' }}>→</span>
                     <span style={{ color: 'var(--text-1)', fontWeight: 600 }}>{comp?.name || a.component_id}</span>
-                    <span style={{ color: '#10d98d' }}>● {a.kpi_name} {a.unit && `(${a.unit})`}</span>
+                    <span style={{ color: '#10d98d', display: 'flex', alignItems: 'center', gap: '4px' }}><Activity size={10} /> {a.kpi_name} {a.unit && `(${a.unit})`}</span>
                   </div>
                 );
               })}
             </div>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => setStep('assign')}
-                style={{ flex: 1, padding: '9px', borderRadius: '8px', background: 'var(--bg-0)', border: '1px solid var(--border)', color: 'var(--text-1)', fontSize: '11px', cursor: 'pointer' }}>
-                ✏️ Edit Assignments
+                style={{ flex: 1, padding: '9px', borderRadius: '8px', background: 'var(--bg-0)', border: '1px solid var(--border)', color: 'var(--text-1)', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <Edit2 size={11} /> Edit Assignments
               </button>
               <button onClick={handleDisconnect}
-                style={{ flex: 1, padding: '9px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: '11px', cursor: 'pointer' }}>
-                🔌 Disconnect
+                style={{ flex: 1, padding: '9px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <PowerOff size={11} /> Disconnect
               </button>
             </div>
           </div>
@@ -320,12 +321,12 @@ export default function DataSourcePanel() {
       {(step === 'assign') && (
         <div style={{ padding: '10px 12px', borderTop: '1px solid var(--border)', flexShrink: 0, display: 'flex', gap: '8px' }}>
           <button onClick={() => setStep('upload')}
-            style={{ padding: '8px 14px', borderRadius: '8px', background: 'var(--bg-0)', border: '1px solid var(--border)', color: 'var(--text-1)', fontSize: '11px', cursor: 'pointer' }}>
-            ← Re-upload
+            style={{ padding: '8px 14px', borderRadius: '8px', background: 'var(--bg-0)', border: '1px solid var(--border)', color: 'var(--text-1)', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <ArrowLeft size={11} /> Re-upload
           </button>
           <button onClick={handleSave} disabled={assignedCount === 0 || loading}
-            style={{ flex: 1, padding: '8px', borderRadius: '8px', background: assignedCount > 0 ? 'linear-gradient(135deg,#4865f2,#f4723e)' : 'var(--bg-0)', border: 'none', color: assignedCount > 0 ? '#fff' : 'var(--text-2)', fontSize: '12px', fontWeight: 700, cursor: assignedCount > 0 ? 'pointer' : 'not-allowed' }}>
-            {loading ? '⏳ Saving…' : `▶ Start Streaming (${assignedCount} columns)`}
+            style={{ flex: 1, padding: '8px', borderRadius: '8px', background: assignedCount > 0 ? 'linear-gradient(135deg,#4865f2,#f4723e)' : 'var(--bg-0)', border: 'none', color: assignedCount > 0 ? '#fff' : 'var(--text-2)', fontSize: '12px', fontWeight: 700, cursor: assignedCount > 0 ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            {loading ? <><Loader2 size={12} className="spin" /> Saving…</> : <><Play size={12} /> Start Streaming ({assignedCount} columns)</>}
           </button>
         </div>
       )}

@@ -3,7 +3,7 @@ import useTwinStore, { DOMAINS } from '../store/useTwinStore';
 import Grid2D from '../components/Grid2D';
 import Scene3D from '../components/Scene3D';
 import { layoutPrompt, saveLayoutState, checkBackendHealth, getLayoutSuggestions } from '../services/api';
-import { Bot, Plus, Minus, Monitor, DoorClosed, Plane, Briefcase, Lock, BaggageClaim, Settings, Package, PenTool, Search, Box, Truck, Inbox, ArrowUpSquare } from 'lucide-react';
+import { Bot, Plus, Minus, Monitor, DoorClosed, Plane, Briefcase, Lock, BaggageClaim, Settings, Package, PenTool, Search, Box, Truck, Inbox, ArrowUpSquare, Loader2, Play, AlertTriangle, CheckCircle2, Sparkles, LayoutGrid, Hexagon } from 'lucide-react';
 
 const VIEWS = ['2D Grid', '3D Preview', 'Split'];
 
@@ -186,7 +186,7 @@ export default function GridStep() {
             </div>
             <button onClick={handleAiPrompt} disabled={!aiPrompt.trim() || aiLoading}
               style={{ padding: '9px 18px', borderRadius: '8px', background: 'linear-gradient(135deg,#4865f2,#f4723e)', border: 'none', color: '#fff', fontSize: '12px', fontWeight: 700, cursor: aiPrompt.trim() ? 'pointer' : 'not-allowed', opacity: aiPrompt.trim() ? 1 : 0.5, flexShrink: 0 }}>
-              {aiLoading ? '⏳' : '▶ Run'}
+              {aiLoading ? <Loader2 size={12} className="spin" /> : <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Play size={12} /> Run</div>}
             </button>
           </div>
           {aiResult && (
@@ -194,11 +194,11 @@ export default function GridStep() {
               background: aiResult.error ? 'rgba(245,158,11,0.08)' : 'rgba(16,217,141,0.08)',
               border: `1px solid ${aiResult.error ? 'rgba(245,158,11,0.25)' : 'rgba(16,217,141,0.25)'}`,
               color: aiResult.error ? '#f59e0b' : '#10d98d' }}>
-              {aiResult.error ? '⚠' : '✅'} {aiResult.explanation}
+              {aiResult.error ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} />} {aiResult.explanation}
               {aiResult.actionsCount > 0 && ` (${aiResult.actionsCount} action${aiResult.actionsCount > 1 ? 's' : ''} applied)`}
               {aiResult.customCount > 0 && (
                 <span style={{ marginLeft: '8px', padding: '1px 6px', borderRadius: '8px', background: 'rgba(168,85,247,0.2)', color: '#a855f7', fontSize: '10px', fontWeight: 700 }}>
-                  ✨ {aiResult.customCount} custom 3D component{aiResult.customCount > 1 ? 's' : ''} generated
+                  <Sparkles size={10} /> {aiResult.customCount} custom 3D component{aiResult.customCount > 1 ? 's' : ''} generated
                 </span>
               )}
             </div>
@@ -212,7 +212,7 @@ export default function GridStep() {
         {(view === '2D Grid' || view === 'Split') && (
           <div style={{ flex: view === 'Split' ? '0 0 50%' : '1', borderRight: view === 'Split' ? '1px solid var(--border)' : 'none', display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
             <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-1)' }}>⬜ 2D EDITOR</span>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: '4px' }}><LayoutGrid size={12} /> 2D EDITOR</span>
               <div style={{ fontSize: '10px', color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                 <span>Drag to reposition</span>
                 <span style={{ opacity: 0.3 }}>|</span>
@@ -239,7 +239,7 @@ export default function GridStep() {
         {(view === '3D Preview' || view === 'Split') && (
           <div style={{ flex: view === 'Split' ? '0 0 50%' : '1', display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
             <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-1)' }}>⬡ 3D PREVIEW</span>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-1)', display: 'flex', alignItems: 'center', gap: '4px' }}><Hexagon size={12} /> 3D PREVIEW</span>
               <span style={{ fontSize: '10px', color: 'var(--text-2)' }}>Orbit · Scroll zoom · Ctrl+drag to move</span>
             </div>
             <div style={{ flex: 1, position: 'relative' }}><Scene3D /></div>

@@ -6,7 +6,7 @@ import KpiPanel from '../components/KpiPanel';
 import KpiCharts from '../components/KpiCharts';
 import Chatbot from '../components/Chatbot';
 import useKpiWebSocket from '../hooks/useKpiWebSocket';
-import { Lock, AlertCircle, Eye, Bell, Activity, LineChart, Bot } from 'lucide-react';
+import { Lock, AlertCircle, Eye, Bell, Activity, LineChart, Bot, Hexagon, CheckCircle2, AlertTriangle, AlertOctagon, Loader2 } from 'lucide-react';
 
 const TABS = [
     { id: 'kpi',    label: <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}><Activity size={14} /> KPIs</div> },
@@ -17,10 +17,10 @@ const TABS = [
 const CAMERA_VIEWS = ['Isometric', 'Top', 'Front', 'Free'];
 
 const WS_LABELS = {
-    connecting:   { color: '#f59e0b', dot: '⏳', text: 'Connecting…' },
-    live:         { color: '#10d98d', dot: '●',  text: 'Live' },
-    reconnecting: { color: '#f97316', dot: '↻',  text: 'Reconnecting' },
-    offline:      { color: '#64748b', dot: '○',  text: 'No data source' },
+    connecting:   { color: '#f59e0b', icon: <Loader2 size={10} className="spin" />, text: 'Connecting…' },
+    live:         { color: '#10d98d', icon: <div style={{width: 8, height: 8, borderRadius: '50%', background: '#10d98d', boxShadow: '0 0 6px #10d98d'}} />, text: 'Live' },
+    reconnecting: { color: '#f97316', icon: <Loader2 size={10} className="spin" />, text: 'Reconnecting' },
+    offline:      { color: '#64748b', icon: <div style={{width: 8, height: 8, borderRadius: '50%', border: '2px solid #64748b'}} />, text: 'No data source' },
 };
 
 export default function SharedTwinView({ shareId }) {
@@ -182,10 +182,10 @@ export default function SharedTwinView({ shareId }) {
                     </span>
                 </div>
 
-                <div style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '8px', fontWeight: 600, whiteSpace: 'nowrap',
+                <div style={{ fontSize: '10px', padding: '3px 10px', borderRadius: '8px', fontWeight: 600, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px',
                     background: `rgba(${wsStatus === 'live' ? '16,217,141' : wsStatus === 'connecting' || wsStatus === 'reconnecting' ? '245,158,11' : '100,116,139'},0.1)`,
                     color: wsInfo.color, border: `1px solid ${wsInfo.color}40` }}>
-                    {wsInfo.dot} {wsInfo.text}
+                    {wsInfo.icon} {wsInfo.text}
                     {wsStatus === 'live' && <span style={{ marginLeft: '6px', opacity: 0.65, fontWeight: 400 }}>· {messageCount} readings</span>}
                 </div>
 
@@ -208,7 +208,7 @@ export default function SharedTwinView({ shareId }) {
 
             {alertsOpen && critKpis.length > 0 && (
                 <div style={{ position: 'absolute', top: '50px', right: '14px', zIndex: 100, width: '290px', background: 'var(--bg-1)', border: '1px solid #ef4444', borderRadius: '10px', padding: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.6)' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#ef4444', marginBottom: '8px' }}>🚨 Critical Alerts</div>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#ef4444', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}><AlertOctagon size={14} /> Critical Alerts</div>
                     {critKpis.map(k => (
                         <div key={k.id} style={{ padding: '6px 8px', marginBottom: '5px', borderRadius: '7px', background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.2)', fontSize: '11px' }}>
                             <span style={{ fontWeight: 700, color: '#ef4444' }}>{k.name}</span>
@@ -224,10 +224,10 @@ export default function SharedTwinView({ shareId }) {
 
                     <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', flexDirection: 'column', gap: '6px', pointerEvents: 'none' }}>
                         {[
-                            { icon: '⬡', label: 'Components', value: components.length, color: '#4865f2' },
-                            { icon: '✅', label: 'OK', value: kpis.filter(k => k.status === 'green').length, color: '#10d98d' },
-                            { icon: '⚠️', label: 'Warnings', value: warnKpis.length, color: '#f59e0b' },
-                            { icon: '🚨', label: 'Critical', value: critKpis.length, color: '#ef4444' },
+                            { icon: <Hexagon size={14} color="#4865f2" />, label: 'Components', value: components.length, color: '#4865f2' },
+                            { icon: <CheckCircle2 size={14} color="#10d98d" />, label: 'OK', value: kpis.filter(k => k.status === 'green').length, color: '#10d98d' },
+                            { icon: <AlertTriangle size={14} color="#f59e0b" />, label: 'Warnings', value: warnKpis.length, color: '#f59e0b' },
+                            { icon: <AlertOctagon size={14} color="#ef4444" />, label: 'Critical', value: critKpis.length, color: '#ef4444' },
                         ].map(s => (
                             <div key={s.label} style={{ padding: '5px 10px', borderRadius: '8px', background: 'rgba(255,255,255,0.88)', border: `1px solid ${s.color}28`, backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ fontSize: '13px' }}>{s.icon}</span>

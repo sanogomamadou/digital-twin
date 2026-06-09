@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import useTwinStore, { DOMAINS } from '../store/useTwinStore';
-import { Play, Layers, Sparkles, Eye, Pencil, Trash2, RefreshCw, AlertCircle, X, Share2, Copy, Search, LayoutGrid, Monitor, Plus } from 'lucide-react';
+import { Play, Layers, Sparkles, Eye, Pencil, Trash2, RefreshCw, AlertCircle, X, Share2, Copy, Search, LayoutGrid, Monitor, Plus, Factory, Plane, Package, Building } from 'lucide-react';
 import ConnectionWizard from '../components/ConnectionWizard';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const DOMAIN_ICONS = { factory: '🏭', airport: '✈️', warehouse: '📦' };
+const DOMAIN_ICONS = { factory: <Factory size={24} />, airport: <Plane size={24} />, warehouse: <Package size={24} /> };
 const DOMAIN_DESCS = {
     factory: 'Monitor production lines, machines & manufacturing flows in real time',
     airport: 'Track terminals, gates, runways & passenger flows with live KPIs',
@@ -85,7 +85,7 @@ function TwinListItem({ twin, onLoad, onEdit, onDelete, onRename }) {
                     background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '20px', flexShrink: 0, border: `1px solid ${color}30`
                 }}>
-                    {DOMAIN_ICONS[twin.domain] || '🏗️'}
+                    {DOMAIN_ICONS[twin.domain] || <Building size={20} />}
                 </div>
                 
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

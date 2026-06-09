@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Trash2, RotateCcw } from 'lucide-react';
+import { Trash2, RotateCcw, Monitor, DoorClosed, Plane, Briefcase, Lock, BaggageClaim, Settings, Package, PenTool, Search, Box, Truck, Inbox, ArrowUpSquare } from 'lucide-react';
 import useTwinStore from '../store/useTwinStore';
 
 const CELL_PX = 40;
@@ -351,12 +351,28 @@ export default function Grid2D() {
 }
 
 function getTypeIcon(type) {
-    const icons = {
-        terminal: '🏢', gate: '🚪', runway: '✈️', checkin_desk: '🖥️', security_zone: '🔒', baggage_claim: '🧳',
-        hydraulic_press: '⚙️', conveyor_belt: '📦', cnc_machine: '🔩', assembly_station: '🔧', quality_control: '🔍', warehouse_rack: '📚',
-        storage_rack: '📚', picking_zone: '🚜', reception_dock: '📥', shipping_dock: '📤', conveyor: '📦', sorter: '🔄',
-    };
-    return icons[type] || '⬛';
+    const size = 14;
+    switch (type) {
+        case 'terminal': return <Monitor size={size} />;
+        case 'gate': return <DoorClosed size={size} />;
+        case 'runway': return <Plane size={size} />;
+        case 'checkin_desk': return <Briefcase size={size} />;
+        case 'security_zone': return <Lock size={size} />;
+        case 'baggage_claim': return <BaggageClaim size={size} />;
+        case 'hydraulic_press': return <Settings size={size} />;
+        case 'conveyor_belt': return <Package size={size} />;
+        case 'cnc_machine': return <Settings size={size} />;
+        case 'assembly_station': return <PenTool size={size} />;
+        case 'quality_control': return <Search size={size} />;
+        case 'warehouse_rack':
+        case 'storage_rack': return <Box size={size} />;
+        case 'picking_zone': return <Truck size={size} />;
+        case 'reception_dock': return <Inbox size={size} />;
+        case 'shipping_dock': return <ArrowUpSquare size={size} />;
+        case 'conveyor': return <Package size={size} />;
+        case 'sorter': return <Settings size={size} />;
+        default: return <Box size={size} />;
+    }
 }
 
 function hexRgb(hex) {

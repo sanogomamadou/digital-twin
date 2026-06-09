@@ -757,7 +757,7 @@ function ComponentMesh({ component, kpis, cellSize, selected, hovered, onSelect,
 
             {/* Component label + custom badge */}
             <Text position={[0, h + 1.0, 0]} fontSize={0.75} color={selected ? '#4865f2' : '#94a3c8'} anchorX="center" anchorY="bottom" maxWidth={w}>
-                {component.isCustom ? `${component.icon || '✨'} ${component.name}` : component.name}
+                {component.isCustom ? `${component.icon || ''} ${component.name}`.trim() : component.name}
             </Text>
             {/* Custom component sub-label */}
             {component.isCustom && (

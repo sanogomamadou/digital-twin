@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { connectTelemetryDb, selectTelemetryTable, getTelemetrySchema, getTelemetryStatus } from '../services/api';
 import useTwinStore from '../store/useTwinStore';
+import { Plug, Loader2, AlertTriangle } from 'lucide-react';
 
 const SOURCE_TYPES = [
   { id: 'postgres', label: 'PostgreSQL' },
@@ -109,7 +110,7 @@ export default function ConnectionWizard() {
       {/* Header */}
       <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>
         <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-0)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          🔌 Global Telemetry Connection
+          <Plug size={14} /> Global Telemetry Connection
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-2)', marginTop: '4px' }}>
           Connect the platform to your telemetry database or stream. Assignment and live visualization will be configured during the Twin creation.
@@ -201,8 +202,8 @@ export default function ConnectionWizard() {
           )}
 
           <button onClick={handleConnect} disabled={!dbUrl || loading}
-            style={{ width: '100%', padding: '10px', borderRadius: '10px', background: dbUrl ? 'linear-gradient(135deg,#4865f2,#f4723e)' : 'var(--bg-0)', border: 'none', color: dbUrl ? '#fff' : 'var(--text-2)', fontSize: '12px', fontWeight: 700, cursor: dbUrl ? 'pointer' : 'not-allowed' }}>
-            {loading ? '⏳ Connecting...' : 'Test Connection & Fetch Schemas'}
+            style={{ width: '100%', padding: '10px', borderRadius: '10px', background: dbUrl ? 'linear-gradient(135deg,#4865f2,#f4723e)' : 'var(--bg-0)', border: 'none', color: dbUrl ? '#fff' : 'var(--text-2)', fontSize: '12px', fontWeight: 700, cursor: dbUrl ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            {loading ? <><Loader2 size={12} className="spin" /> Connecting...</> : 'Test Connection & Fetch Schemas'}
           </button>
         </div>
 
@@ -259,13 +260,13 @@ export default function ConnectionWizard() {
             )}
             
             <button onClick={handleSaveConnection} disabled={!selectedTable || loading}
-              style={{ width: '100%', padding: '10px', borderRadius: '8px', background: selectedTable ? '#10d98d' : 'var(--bg-1)', border: 'none', color: selectedTable ? '#fff' : 'var(--text-2)', fontSize: '12px', fontWeight: 700, cursor: selectedTable ? 'pointer' : 'not-allowed' }}>
-              {loading ? '⏳ Saving...' : 'Save Configuration'}
+              style={{ width: '100%', padding: '10px', borderRadius: '8px', background: selectedTable ? '#10d98d' : 'var(--bg-1)', border: 'none', color: selectedTable ? '#fff' : 'var(--text-2)', fontSize: '12px', fontWeight: 700, cursor: selectedTable ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              {loading ? <><Loader2 size={12} className="spin" /> Saving...</> : 'Save Configuration'}
             </button>
           </div>
         ) : success && tables.length === 0 && !loading && sourceType === 'postgres' ? (
           <div style={{ marginBottom: '16px', padding: '12px', background: 'rgba(245,158,11,0.08)', borderRadius: '8px', border: '1px solid rgba(245,158,11,0.3)', color: '#f59e0b', fontSize: '11px' }}>
-            <strong style={{ display: 'block', marginBottom: '4px' }}>⚠️ No tables found in this database</strong>
+            <strong style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}><AlertTriangle size={14} /> No tables found in this database</strong>
             The database is currently empty. Please make sure you have restarted the <code>generate_pg_data.py</code> script so it can create the telemetry tables.
           </div>
         ) : null}

@@ -130,7 +130,7 @@ export default function Chatbot() {
           <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
             <button 
               onClick={clearNlqMessages}
-              title="Nouvelle discussion"
+              title="New Chat"
               style={{ padding: '6px', marginLeft: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-0)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', color: 'var(--text-1)', transition: 'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-1)'; e.currentTarget.style.color = 'var(--text-0)' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-0)'; e.currentTarget.style.color = 'var(--text-1)' }}

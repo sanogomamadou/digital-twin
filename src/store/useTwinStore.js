@@ -581,7 +581,7 @@ const useTwinStore = create((set, get) => ({
                 const dxcBlack = [26, 26, 26];
 
                 // Mappage du domaine en français
-                const domainFr = selectedDomain === 'factory' ? 'Usine' : selectedDomain === 'airport' ? 'Aéroport' : selectedDomain === 'warehouse' ? 'Entrepôt' : 'Inconnu';
+                const domainEn = selectedDomain === 'factory' ? 'Factory' : selectedDomain === 'airport' ? 'Airport' : selectedDomain === 'warehouse' ? 'Warehouse' : 'Unknown';
 
                 // Header block with DXC Purple
                 doc.setFillColor(...dxcPurple);
@@ -590,11 +590,11 @@ const useTwinStore = create((set, get) => ({
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(24);
                 doc.setTextColor(255, 255, 255);
-                doc.text(`Rapport du Jumeau Numérique`, 14, 20);
+                doc.text(`Digital Twin Report`, 14, 20);
                 doc.setFontSize(12);
                 doc.setFont('helvetica', 'normal');
-                doc.text(`Domaine: ${domainFr}  |  Date: ${new Date().toLocaleDateString('fr-FR')}`, 14, 30);
-                doc.text(`Composants: ${components.length}  |  Connexions: ${connections.length}`, 14, 36);
+                doc.text(`Domain: ${domainEn}  |  Date: ${new Date().toLocaleDateString('en-US')}`, 14, 30);
+                doc.text(`Components: ${components.length}  |  Connections: ${connections.length}`, 14, 36);
 
                 let currentY = 50;
 

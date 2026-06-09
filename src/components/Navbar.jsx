@@ -220,7 +220,7 @@ export default function Navbar() {
                                     onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-0)'; }}
                                 >
                                     <LogOut size={16} />
-                                    Déconnexion
+                                    Log Out
                                 </button>
                             </div>
                         )}

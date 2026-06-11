@@ -11,6 +11,12 @@ class AgentState(TypedDict):
 
 _cached_workflow = None
 
+def reset_orchestrator_cache():
+    """Invalidate the cached graph so the next build picks up a fresh LLM
+    (e.g. after the admin changes the LLM config via /admin/llm-config)."""
+    global _cached_workflow
+    _cached_workflow = None
+
 def create_analytics_orchestrator():
     """Builds and returns the LangGraph orchestrator for Analysis (NLQ or Reports)."""
     global _cached_workflow

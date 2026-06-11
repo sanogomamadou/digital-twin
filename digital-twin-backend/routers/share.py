@@ -3,30 +3,12 @@ import uuid
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
-import bcrypt
 
 from db.database import get_db, ShareLinkDB
 from models.schemas import ShareLinkCreate, ShareLinkUpdate, ShareLinkResponse, ShareLinkVerify
-from routers.auth import get_current_user
+from routers.auth import get_current_user, get_password_hash, verify_password
 
 router = APIRouter(prefix="/share", tags=["Share"])
-
-def verify_password(plain_password, hashed_password):
-    # bcrypt requires bytes
-    password_bytes = plain_password.encode('utf-8')
-    # If the password is > 72 bytes, bcrypt will throw an error, but let's truncate just in case
-    # Actually, direct bcrypt handles it or throws. Let's truncate to 72 bytes to be safe.
-    password_bytes = password_bytes[:72]
-    
-    # hashed_password from DB is string, encode it to bytes
-    hash_bytes = hashed_password.encode('utf-8')
-    return bcrypt.checkpw(password_bytes, hash_bytes)
-
-def get_password_hash(password):
-    password_bytes = password.encode('utf-8')[:72]
-    salt = bcrypt.gensalt()
-    hashed_bytes = bcrypt.hashpw(password_bytes, salt)
-    return hashed_bytes.decode('utf-8')
 
 
 @router.post("", response_model=ShareLinkResponse)

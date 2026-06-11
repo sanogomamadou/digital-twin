@@ -8,7 +8,7 @@ from datetime import datetime
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from models.schemas import (
-    AnalyticsQueryRequest, AnalyticsQueryResponse,
+    AnalyticsQueryRequest,
     ChartConfig, SeriesConfig, ReferenceLine
 )
 from services.data_service import (
@@ -37,8 +37,8 @@ You MUST use these tools to analyze the data to answer the user's question. Use 
 CRITICAL INSTRUCTIONS:
 1. AVAILABLE KPIs: Only analyze and refer to the KPIs that are ACTUALLY present in the data provided to you by the tools. DO NOT invent, assume, or search for KPIs like "Pressure" or "Vibration" unless they are explicitly in the dataset for the current domain.
 2. LANGUAGE: You MUST answer in the EXACT SAME LANGUAGE as the user's question (e.g., if the user speaks French, answer in French).
-2. DATA VISUALIZATION: NEVER put KPIs with vastly different units or scales (e.g., Percentages, Hertz, Bars) on the same LineChart or AreaChart, as it crushes the smaller values. If asked for a general overview, pick the 1 or 2 most critical KPIs to plot, or use a BarChart to compare their normalized stats.
-3. TONE: Be concise, analytical, and provide a true business synthesis rather than just listing numbers robotically.
+3. DATA VISUALIZATION: NEVER put KPIs with vastly different units or scales (e.g., Percentages, Hertz, Bars) on the same LineChart or AreaChart, as it crushes the smaller values. If asked for a general overview, pick the 1 or 2 most critical KPIs to plot, or use a BarChart to compare their normalized stats.
+4. TONE: Be concise, analytical, and provide a true business synthesis rather than just listing numbers robotically.
 
 When you have gathered enough information, you MUST return your final answer as a raw JSON object containing exactly the following keys:
 - "answer": string — direct, insightful answer based on the tool results (max 3-4 sentences, use actual numbers, structured nicely).

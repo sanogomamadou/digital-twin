@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from db.database import get_db
 from db import crud
 from models.schemas import (
-    AnalyticsQueryRequest, AnalyticsQueryResponse,
+    AnalyticsQueryRequest,
     ChartFromPromptRequest, ChartConfig, QuerySuggestion, ReportRequest
 )
 from pydantic import BaseModel
@@ -17,6 +17,23 @@ from db.database import UserDB, QueryHistoryDB
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
+# ── Simple in-memory rate limiter for the LLM-costly endpoints ───────────────
+# Protects against abuse (especially guests holding a share_token). Single-process
+# only (Render free tier); use Redis for a multi-process deployment.
+import time as _time
+from collections import defaultdict as _defaultdict
+_LLM_WINDOW_SEC = 60
+_LLM_MAX_PER_WINDOW = 30
+_llm_calls = _defaultdict(list)
+
+def _check_llm_rate_limit(user_id: int):
+    now = _time.time()
+    recent = [t for t in _llm_calls[user_id] if now - t < _LLM_WINDOW_SEC]
+    if len(recent) >= _LLM_MAX_PER_WINDOW:
+        raise HTTPException(status_code=429, detail="Trop de requêtes analytiques — patientez un instant.")
+    recent.append(now)
+    _llm_calls[user_id] = recent
+
 
 @router.post("/query")
 async def nlq_query(
@@ -28,6 +45,7 @@ async def nlq_query(
     Ask a natural language question about KPI data.
     Returns an answer + a chart configuration ready for Recharts as a SSE stream.
     """
+    _check_llm_rate_limit(user_id)
     try:
         layout = crud.get_layout(db, user_id, request.twin_id)
         valid_component_ids = None
@@ -109,6 +127,7 @@ async def generate_report(
     """
     Generate an AI PDF report text based on the current twin data and historical DB data.
     """
+    _check_llm_rate_limit(user_id)
     try:
         layout = crud.get_layout(db, user_id, request.twin_id)
         

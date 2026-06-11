@@ -30,9 +30,9 @@ def delete_twin(db: Session, user_id: int, twin_id: str) -> bool:
         
     from db.database import ShareLinkDB
     
-    # Cascade deletions
-    db.query(ShareLinkDB).filter(ShareLinkDB.twin_id == twin_id).delete(synchronize_session=False)
-    db.query(UserConfigurationDB).filter(UserConfigurationDB.twin_id == twin_id).delete(synchronize_session=False)
+    # Cascade deletions (scoped by user_id where that column exists, defensive)
+    db.query(ShareLinkDB).filter(ShareLinkDB.twin_id == twin_id, ShareLinkDB.user_id == user_id).delete(synchronize_session=False)
+    db.query(UserConfigurationDB).filter(UserConfigurationDB.twin_id == twin_id, UserConfigurationDB.user_id == user_id).delete(synchronize_session=False)
     db.query(KpiDataDB).filter(KpiDataDB.twin_id == twin_id).delete(synchronize_session=False)
     
     db.delete(twin)
@@ -185,13 +185,10 @@ def get_user_configuration(db: Session, twin_id: str, user_id: int = None) -> Us
     query = db.query(UserConfigurationDB).filter(UserConfigurationDB.twin_id == twin_id)
     if user_id is not None:
         query = query.filter(UserConfigurationDB.user_id == user_id)
-    config = query.first()
-    
-    if not config and (twin_id == "default" or twin_id.startswith("default_")):
-        # Fallback to the global default configuration if the twin doesn't have a specific one yet
-        fallback_query = db.query(UserConfigurationDB).filter(UserConfigurationDB.twin_id == "default")
-        config = fallback_query.first()
-    return config
+    # No fallback to the global "default" config: a tenant without its own
+    # config gets None, and the caller (get_user_state) returns a safe default
+    # state — avoiding any cross-tenant config leak.
+    return query.first()
 
 
 def get_all_user_configurations(db: Session) -> list[UserConfigurationDB]:

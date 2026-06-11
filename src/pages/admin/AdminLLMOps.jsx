@@ -92,20 +92,15 @@ export default function AdminLLMOps() {
                                 className="input"
                                 style={{ appearance: 'none', cursor: 'pointer', height: '42px' }}
                             >
+                                {/* Only Groq is installed (langchain-groq). The backend
+                                    (_build_llm_from_db) can route OpenAI/Anthropic/Google by model
+                                    name, but their langchain-* packages are not in requirements.txt.
+                                    Re-add their optgroups here once those packages are installed. */}
                                 <optgroup label="Groq (Fast Inference)">
                                     <option value="llama3-70b-8192">Llama 3 70B</option>
                                     <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
                                     <option value="llama3-8b-8192">Llama 3 8B</option>
                                     <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
-                                </optgroup>
-                                <optgroup label="OpenAI">
-                                    <option value="gpt-4o">GPT-4o</option>
-                                </optgroup>
-                                <optgroup label="Anthropic">
-                                    <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
-                                </optgroup>
-                                <optgroup label="Google">
-                                    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                                 </optgroup>
                             </select>
                         </div>

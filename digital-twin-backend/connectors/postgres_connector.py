@@ -15,19 +15,12 @@ from connectors.base import BaseConnector, KpiReading
 
 logger = logging.getLogger(__name__)
 
-_instance = None
-
-def get_postgres_connector():
-    return _instance
-
 class PostgresConnector(BaseConnector):
     name = "postgres"
 
     def __init__(self, config: dict):
         super().__init__(config)
-        global _instance
-        _instance = self
-        
+
         self.db_url = config.get("db_url") or os.getenv("TELEMETRY_DB_URL", "postgresql://postgres:postgrespassword@localhost:5433/telemetry_db")
         self.assignments = config.get("assignments", {})
         self.domain = config.get("domain", "factory") 
@@ -56,7 +49,9 @@ class PostgresConnector(BaseConnector):
 
     def _get_connection(self):
         try:
-            return psycopg2.connect(self.db_url)
+            # connect_timeout guards against a slow/asleep DB (e.g. Neon cold start)
+            # blocking a worker thread indefinitely.
+            return psycopg2.connect(self.db_url, connect_timeout=5)
         except Exception as e:
             logger.error(f"PostgresConnector failed to connect: {e}")
             return None
@@ -81,95 +76,108 @@ class PostgresConnector(BaseConnector):
             logger.warning(f"Formula evaluation failed for '{formula}': {e}")
             return 0.0
 
+    def _fetch_readings(self):
+        """Synchronous DB work — executed in a thread via run_in_executor so the
+        blocking psycopg2 calls never freeze the asyncio event loop.
+        Returns a list of KpiReading, or None if the connection could not be opened."""
+        conn = self._get_connection()
+        if not conn:
+            return None
+
+        readings = []
+        cursor = None  # always initialise so finally block is safe
+        try:
+            from psycopg2 import sql
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            table_name = self.get_table_name()
+
+            # Fetch latest row for EACH mapped component uniquely
+            components_needed = set(kpi.get('component_id') for kpi in self.assignments.values() if kpi.get('component_id'))
+
+            for comp_id in components_needed:
+                query = sql.SQL("SELECT * FROM {table} WHERE {comp_col} = %s").format(
+                    table=sql.Identifier(table_name or "factory_data"),
+                    comp_col=sql.Identifier(self.component_id_col or "component_id")
+                )
+                params = [comp_id]
+
+                last_ts = self.last_timestamps.get(comp_id)
+                if last_ts:
+                    query += sql.SQL(" AND {ts_col} > %s").format(
+                        ts_col=sql.Identifier(self.timestamp_col or "timestamp")
+                    )
+                    params.append(last_ts)
+
+                query += sql.SQL(" ORDER BY {ts_col} DESC LIMIT 1").format(
+                    ts_col=sql.Identifier(self.timestamp_col or "timestamp")
+                )
+
+                cursor.execute(query, tuple(params))
+                row = cursor.fetchone()
+
+                if row:
+                    self.last_timestamps[comp_id] = row.get(self.timestamp_col)
+
+                    # Process assigned KPIs for THIS specific component
+                    comp_kpis = {k: v for k, v in self.assignments.items() if v.get('component_id') == comp_id}
+
+                    for kpi_id, kpi_config in comp_kpis.items():
+                        formula = kpi_config.get("formula", "")
+                        value = self._evaluate_formula(formula, dict(row))
+                        rules = kpi_config.get("rules", {})
+                        status = self.compute_status(value, rules)
+
+                        ts = row.get(self.timestamp_col) or datetime.now(timezone.utc)
+                        if ts.tzinfo is None:
+                            ts = ts.replace(tzinfo=timezone.utc)
+
+                        readings.append(KpiReading(twin_id=self.twin_id,
+                            user_id=self.user_id,
+                            component_id=comp_id,
+                            kpi_name=kpi_config.get("kpi_name", "KPI"),
+                            value=round(value, 3),
+                            unit=kpi_config.get("unit", ""),
+                            timestamp=ts,
+                            source="postgres",
+                            status=status,
+                            meta={
+                                "formula": formula,
+                                "interaction": kpi_config.get("interaction", "pulse"),
+                                "rules": rules
+                            }
+                        ))
+        finally:
+            if cursor:
+                cursor.close()
+            conn.close()
+        return readings
+
     async def _run_loop(self):
         logger.info(f"PostgresConnector: Polling {self.db_url} every {self.poll_interval}s")
         outage_logged = False
-        
+        loop = asyncio.get_event_loop()
+
         while self._running:
             await asyncio.sleep(self.poll_interval)
-            
-            # logger.info(f"PostgresConnector: Polling with {len(self.assignments)} assignments")
+
             if not self.assignments:
                 continue
 
-            conn = self._get_connection()
-            if not conn:
+            # Run the blocking psycopg2 work in a thread so the event loop stays free
+            try:
+                readings = await loop.run_in_executor(None, self._fetch_readings)
+            except Exception as e:
+                logger.error(f"PostgresConnector poll error: {e}")
+                continue
+
+            if readings is None:
                 if not outage_logged:
                     logger.warning("PostgresConnector: Waiting for DB connection...")
                     outage_logged = True
                 continue
-                
-            outage_logged = False
-            cursor = None  # always initialise so finally block is safe
 
-            try:
-                cursor = conn.cursor(cursor_factory=RealDictCursor)
-                table_name = self.get_table_name()
-                
-                # Fetch latest row for EACH mapped component uniquely
-                components_needed = set(kpi.get('component_id') for kpi in self.assignments.values() if kpi.get('component_id'))
-                
-                for comp_id in components_needed:
-                    from psycopg2 import sql
-                    
-                    query = sql.SQL("SELECT * FROM {table} WHERE {comp_col} = %s").format(
-                        table=sql.Identifier(table_name or "factory_data"),
-                        comp_col=sql.Identifier(self.component_id_col or "component_id")
-                    )
-                    params = [comp_id]
-                    
-                    last_ts = self.last_timestamps.get(comp_id)
-                    if last_ts:
-                        query += sql.SQL(" AND {ts_col} > %s").format(
-                            ts_col=sql.Identifier(self.timestamp_col or "timestamp")
-                        )
-                        params.append(last_ts)
-                        
-                    query += sql.SQL(" ORDER BY {ts_col} DESC LIMIT 1").format(
-                        ts_col=sql.Identifier(self.timestamp_col or "timestamp")
-                    )
-                    
-                    cursor.execute(query, tuple(params))
-                    row = cursor.fetchone()
-                    
-                    if row:
-                        # logger.info(f"PostgresConnector: Found row for {comp_id}")
-                        self.last_timestamps[comp_id] = row.get(self.timestamp_col)
-                        
-                        # Process assigned KPIs for THIS specific component
-                        comp_kpis = {k: v for k, v in self.assignments.items() if v.get('component_id') == comp_id}
-                        
-                        for kpi_id, kpi_config in comp_kpis.items():
-                            formula = kpi_config.get("formula", "")
-                            value = self._evaluate_formula(formula, dict(row))
-                            rules = kpi_config.get("rules", {})
-                            status = self.compute_status(value, rules)
-                            
-                            ts = row.get(self.timestamp_col) or datetime.now(timezone.utc)
-                            if ts.tzinfo is None:
-                                ts = ts.replace(tzinfo=timezone.utc)
-                                
-                            reading = KpiReading(twin_id=self.twin_id, 
-                                user_id=self.user_id,
-                                component_id=comp_id,
-                                kpi_name=kpi_config.get("kpi_name", "KPI"),
-                                value=round(value, 3),
-                                unit=kpi_config.get("unit", ""),
-                                timestamp=ts,
-                                source="postgres",
-                                status=status,
-                                meta={
-                                    "formula": formula,
-                                    "interaction": kpi_config.get("interaction", "pulse"),
-                                    "rules": rules
-                                }
-                            )
-                            await self.emit(reading)
-                            logger.info(f"Emitted KPI {kpi_config.get('kpi_name')} = {value} for {comp_id}")
-                            
-            except Exception as e:
-                logger.error(f"PostgresConnector poll error: {e}")
-            finally:
-                if cursor:
-                    cursor.close()
-                conn.close()
+            outage_logged = False
+
+            for reading in readings:
+                await self.emit(reading)
+                logger.info(f"Emitted KPI {reading.kpi_name} = {reading.value} for {reading.component_id}")

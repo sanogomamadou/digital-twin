@@ -84,7 +84,7 @@ async def run_report_agent(twin_data: dict, records: list) -> dict:
             config = {"configurable": {"thread_id": "global_session"}, "recursion_limit": 10}
             from services.llm_service import get_langfuse_callback, AgentMetricsCallbackHandler
             import uuid
-            trace_id_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, "report_agent")
+            trace_id_uuid = uuid.uuid4()
             callbacks = [AgentMetricsCallbackHandler(trace_id_uuid)]
             lf_cb = get_langfuse_callback()
             if lf_cb:

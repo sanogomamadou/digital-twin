@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from db.database import create_tables
 from routers import layout, kpis, analytics, twins, share, auth, admin
 from routers.stream import router as stream_router, kpi_broadcaster, manager
-from routers.data_source import router as source_router, get_source_state
+from routers.data_source import router as source_router
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s — %(message)s")
@@ -174,8 +174,8 @@ async def shutdown():
 @app.get("/")
 def root():
     from services.llm_service import has_real_llm
-    from connectors.postgres_connector import get_postgres_connector
-    pc = get_postgres_connector()
+    from routers.data_source import get_active_connectors
+    running = [c for c in get_active_connectors().values() if getattr(c, "_running", False)]
     return {
         "name": "Digital Twin Platform API",
         "version": "2.2.0-PG",
@@ -184,8 +184,9 @@ def root():
         "model": "dynamic-db-config",
         "ws_endpoint": "ws://localhost:8000/ws/kpis",
         "source_status": {
-            "domain": pc.domain if pc else None,
-            "assignments": len(pc.assignments) if pc else 0,
+            "active_connectors": len(running),
+            "domains": sorted({getattr(c, "domain", None) for c in running if getattr(c, "domain", None)}),
+            "assignments": sum(len(getattr(c, "assignments", {})) for c in running),
         },
         "endpoints": {
             "get_schema":     "GET  /source/schema",
@@ -199,9 +200,7 @@ def root():
 
 @app.get("/health")
 def health():
-    from connectors.postgres_connector import get_postgres_connector
     from services.llm_service import has_real_llm
-    pc = get_postgres_connector()
     return {
         "status": "ok",
         "llm_ready": has_real_llm(),

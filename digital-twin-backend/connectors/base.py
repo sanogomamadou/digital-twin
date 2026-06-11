@@ -63,6 +63,13 @@ class BaseConnector(ABC):
         self._task: asyncio.Task | None = None
         self.twin_id = config.get("twin_id", "default")
         self.user_id = config.get("user_id", 1)
+        # KPI assignment interface shared by ALL connectors (set/refreshed via
+        # update_assignments). Without this, factory-built connectors crash when
+        # _run_loop reads self.assignments or /assign clears last_timestamps.
+        self.assignments = config.get("assignments", {})
+        self.domain = config.get("domain", "factory")
+        self.last_timestamps = {}   # per-component incremental cursor (Postgres-style)
+        self._last_ts = None        # single global incremental cursor (NoSQL/lakehouse-style)
 
     async def start(self):
         """Start the connector background task."""
@@ -106,5 +113,17 @@ class BaseConnector(ABC):
                 return "red"
             if orange_lo is not None and value >= orange_lo:
                 return "orange"
-                
+
         return "green"
+
+    def update_assignments(self, assignments: dict, domain: str = None,
+                           db_url: str = None, table_name: str = None,
+                           timestamp_col: str = None, component_id_col: str = None):
+        """Generic hot-update of the KPI assignments + reset of the incremental
+        read cursors. Connection parameters are fixed at construction here;
+        PostgresConnector overrides this for finer control over the DB target."""
+        self.assignments = assignments
+        if domain:
+            self.domain = domain
+        self.last_timestamps = {}
+        self._last_ts = None

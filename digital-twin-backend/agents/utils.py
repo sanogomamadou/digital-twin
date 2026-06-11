@@ -13,12 +13,20 @@ def extract_json_from_text(text: str) -> Optional[Dict[str, Any]]:
         except json.JSONDecodeError:
             pass
             
-    # Try finding any { ... } block if no markdown backticks
-    fallback_match = re.search(r'(\{.*\})', text, re.DOTALL)
-    if fallback_match:
-        try:
-            return json.loads(fallback_match.group(1))
-        except json.JSONDecodeError:
-            pass
-            
+    # Brace-matching scan from the first '{' to its matching '}' — handles
+    # surrounding prose and nested objects better than a greedy regex.
+    start = text.find('{')
+    if start != -1:
+        depth = 0
+        for i in range(start, len(text)):
+            if text[i] == '{':
+                depth += 1
+            elif text[i] == '}':
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(text[start:i + 1])
+                    except json.JSONDecodeError:
+                        break
+
     return None

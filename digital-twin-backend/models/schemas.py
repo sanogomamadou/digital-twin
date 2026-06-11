@@ -208,12 +208,6 @@ class AnalyticsQueryRequest(BaseModel):
     time_range: Optional[str] = "24h"
     history: Optional[list[MessageHistory]] = []
 
-class AnalyticsQueryResponse(BaseModel):
-    answer: str
-    chart: Optional[ChartConfig] = None
-    rawData: list[dict] = []
-    queryId: int = 0
-
 class ChartFromPromptRequest(BaseModel):
     prompt: str
     data: list[dict]

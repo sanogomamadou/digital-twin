@@ -93,7 +93,13 @@ async def propose_kpis(domain: str, columns: List[str], components: List[Dict[st
     ]
     
     try:
-        result = structured_llm.invoke(messages)
+        from services.llm_service import get_langfuse_callback, AgentMetricsCallbackHandler
+        import uuid
+        callbacks = [AgentMetricsCallbackHandler(uuid.uuid4())]
+        lf_cb = get_langfuse_callback()
+        if lf_cb:
+            callbacks.append(lf_cb)
+        result = structured_llm.invoke(messages, config={"callbacks": callbacks})
         return [k.model_dump() for k in result.kpis]
     except Exception as e:
         print(f"Error in KPI structured output: {e}")

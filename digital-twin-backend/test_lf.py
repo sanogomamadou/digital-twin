@@ -1,8 +1,8 @@
 import asyncio
-import os
-os.environ["LANGFUSE_PUBLIC_KEY"] = "pk-lf-a8f10522-306d-4a3f-9ea1-c08ce2859294"
-os.environ["LANGFUSE_SECRET_KEY"] = "sk-lf-c420edae-0fab-46c7-b2d7-e97c0629c421"
-os.environ["LANGFUSE_HOST"] = "https://cloud.langfuse.com"
+from dotenv import load_dotenv
+
+# Langfuse credentials are read from the environment (.env). Never hard-code secrets.
+load_dotenv()
 
 from db.database import SessionLocal
 from models.schemas import AnalyticsQueryRequest

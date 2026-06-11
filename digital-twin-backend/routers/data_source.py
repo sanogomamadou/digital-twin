@@ -299,6 +299,9 @@ def get_connector_instance(db, twin_id: str, user_id: int):
     elif stype == "cassandra":
         from connectors.cassandra_connector import CassandraConnector
         return CassandraConnector(config)
+    elif stype == "databricks":
+        from connectors.databricks_connector import DatabricksConnector
+        return DatabricksConnector(config)
     return None
 
 # We must manage the active connector globally to stop the old one when assignments change
@@ -316,6 +319,11 @@ def register_active_connector(twin_id: str, connector):
     """Called by main.py at startup to register the boot connector."""
     global _active_connectors
     _active_connectors[twin_id] = connector
+
+def get_active_connectors():
+    """Read-only access to the per-twin connector registry — the authoritative
+    multi-tenant source of truth, keyed by twin_id."""
+    return _active_connectors
 
 @router.post("/assign")
 async def assign_columns(payload: AssignmentsPayload, twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
@@ -557,7 +565,7 @@ def disconnect_source(twin_id: str, db: Session = Depends(get_db), current_user:
             loop.create_task(_active_connectors.get(twin_id).stop())
         except:
             pass
-        if user_id in _active_connectors: del _active_connectors[twin_id]
+        if twin_id in _active_connectors: del _active_connectors[twin_id]
 
     user_state.update({
         "columns": [], "streaming": False, "assignments": {},
@@ -567,6 +575,3 @@ def disconnect_source(twin_id: str, db: Session = Depends(get_db), current_user:
     })
     save_user_state(db, twin_id, current_user.id, user_state)
     return {"status": "disconnected"}
-
-def get_source_state():
-    return _source_state

@@ -3,13 +3,15 @@ import { connectTelemetryDb, selectTelemetryTable, getTelemetrySchema, getTeleme
 import useTwinStore from '../store/useTwinStore';
 import { Plug, Loader2, AlertTriangle } from 'lucide-react';
 
+// Source types wired in the backend connector factory
+// (routers/data_source.py · get_connector_instance). MQTT is started globally
+// via the MQTT_ENABLED env flag (not per-twin), so it is not listed here.
 const SOURCE_TYPES = [
   { id: 'postgres', label: 'PostgreSQL' },
   { id: 'mongo', label: 'MongoDB' },
   { id: 'cassandra', label: 'Cassandra' },
   { id: 'databricks', label: 'Databricks' },
   { id: 'kafka', label: 'Apache Kafka' },
-  { id: 'mqtt', label: 'MQTT Broker' },
 ];
 
 export default function ConnectionWizard() {

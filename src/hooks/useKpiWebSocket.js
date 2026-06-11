@@ -10,9 +10,10 @@
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import useTwinStore from '../store/useTwinStore';
+import useAuthStore from '../store/useAuthStore';
 
 const WS_URL = (twinId = 'default') => {
-  const token = useTwinStore.getState().token || (window.localStorage.getItem('auth-storage') ? JSON.parse(window.localStorage.getItem('auth-storage'))?.state?.token : null);
+  const token = useAuthStore.getState().token;
   const tokenQuery = token ? `&token=${token}` : '';
   
   // En production (Vercel), on utilise VITE_API_URL, sinon en local on passe par le proxy Vite

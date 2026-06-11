@@ -8,8 +8,7 @@ from models.schemas import ChartConfig, ChartLLMConfig, SeriesConfig, ReferenceL
 from services.llm_service import get_llm, has_real_llm
 from services.data_service import infer_chart_type
 from langchain_core.messages import SystemMessage, HumanMessage
-
-COLORS = ["#6395ff", "#10d98d", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#f97316"]
+from agents.utils import COLORS
 
 CHART_SYSTEM_PROMPT = """You are a data visualization expert.
 Given data (JSON) and a user prompt, return a valid ChartConfig structure.
@@ -64,7 +63,7 @@ async def run_chart_agent(prompt: str, data: list[dict]) -> ChartConfig:
     try:
         from services.llm_service import get_langfuse_callback, AgentMetricsCallbackHandler
         import uuid
-        trace_id_uuid = uuid.uuid5(uuid.NAMESPACE_DNS, "chart_agent")
+        trace_id_uuid = uuid.uuid4()
         callbacks = [AgentMetricsCallbackHandler(trace_id_uuid)]
         lf_cb = get_langfuse_callback()
         if lf_cb:

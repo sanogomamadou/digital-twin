@@ -115,32 +115,6 @@ def compute_stats(records: list[dict], value_key: str = "value") -> dict:
     }
 
 
-def detect_anomalies(records: list[dict], value_key: str = "value", z_threshold: float = 2.5) -> list[dict]:
-    """Flag records where value deviates more than z_threshold standard deviations."""
-    vals = [r.get(value_key, 0) for r in records]
-    if len(vals) < 4:
-        return []
-    s = pd.Series(vals, dtype=float)
-    mean, std = s.mean(), s.std()
-    if std == 0:
-        return []
-    anomalies = []
-    for r in records:
-        z = abs((r.get(value_key, mean) - mean) / std)
-        if z > z_threshold:
-            anomalies.append({**r, "z_score": round(z, 2)})
-    return anomalies
-
-
-def group_by_component(records: list, key: str = "component_id") -> dict[str, list]:
-    """Group DB records by component_id."""
-    groups: dict[str, list] = {}
-    for r in records:
-        cid = getattr(r, key, None) or r.get(key)
-        groups.setdefault(cid, []).append(r)
-    return groups
-
-
 def records_to_chart_data(records: list, timestamp_field="timestamp", value_field="value", label_field="kpi_name", fmt="%H:%M") -> list[dict]:
     """Convert DB KPI records to chart-ready dicts keyed by KPI name."""
     rows: dict[str, dict] = {}

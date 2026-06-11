@@ -109,7 +109,8 @@ def _build_llm_from_db():
                 
         model_name = config.model
         temp = config.temperature
-            
+        max_tok = config.max_tokens or None  # None → provider default (no cap)
+
         # Route to correct LLM provider
         is_openai = "gpt" in model_name.lower() or "o1" in model_name.lower() or "o3" in model_name.lower()
         is_anthropic = "claude" in model_name.lower()
@@ -125,6 +126,7 @@ def _build_llm_from_db():
                     api_key=key,
                     model=model_name,
                     temperature=temp,
+                    max_tokens=max_tok,
                     max_retries=1
                 )
             elif is_anthropic:
@@ -136,6 +138,7 @@ def _build_llm_from_db():
                     api_key=key,
                     model_name=model_name,
                     temperature=temp,
+                    max_tokens=max_tok,
                     max_retries=1
                 )
             elif is_google:
@@ -146,13 +149,15 @@ def _build_llm_from_db():
                 return ChatGoogleGenerativeAI(
                     google_api_key=key,
                     model=model_name,
-                    temperature=temp
+                    temperature=temp,
+                    max_output_tokens=max_tok
                 )
             else:
                 return ChatGroq(
                     api_key=key,
                     model=model_name,
                     temperature=temp,
+                    max_tokens=max_tok,
                     max_retries=1
                 )
 

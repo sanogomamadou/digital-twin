@@ -127,70 +127,81 @@ def update_llm_config(config_data: LLMConfig, db: Session = Depends(get_db), cur
     
     db.commit()
     db.refresh(config)
+
+    # Invalidate the cached analytics orchestrator so the new model/keys take
+    # effect immediately (otherwise the NLQ/Report graph keeps the old LLM until restart).
+    try:
+        from agents.graph_orchestrator import reset_orchestrator_cache
+        reset_orchestrator_cache()
+    except Exception:
+        pass
+
     return config_data
 
 @router.get("/metrics")
 def get_performance_metrics(db: Session = Depends(get_db), current_admin: UserDB = Depends(require_admin)):
-    """Fetch real agent performance metrics."""
+    """Fetch real agent performance metrics — aggregated in SQL (no row scan)."""
+    from sqlalchemy import text
     one_week_ago = datetime.utcnow() - timedelta(days=7)
-    metrics = db.query(AgentMetricsDB).filter(AgentMetricsDB.timestamp >= one_week_ago).all()
-    
-    # User satisfaction from QueryHistoryDB
-    from db.database import QueryHistoryDB
-    queries = db.query(QueryHistoryDB).filter(QueryHistoryDB.created_at >= one_week_ago).all()
-    rated_queries = [q for q in queries if q.rating is not None]
-    if len(rated_queries) > 0:
-        user_satisfaction = (sum(q.rating for q in rated_queries) / len(rated_queries)) * 100
-    else:
-        user_satisfaction = 100.0 # Default if unrated
-    
-    total_calls = len(metrics)
+
+    # Scalar aggregates over the last 7 days
+    agg = db.execute(text("""
+        SELECT COUNT(*) AS total_calls,
+               COALESCE(AVG(latency_ms), 0) AS avg_latency,
+               COALESCE(SUM(token_count), 0) AS total_tokens,
+               COALESCE(SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END), 0) AS success_calls
+        FROM agent_metrics
+        WHERE timestamp >= :since
+    """), {"since": one_week_ago}).first()
+
+    total_calls = agg.total_calls or 0
+
+    # User satisfaction from rated queries
+    sat = db.execute(text("""
+        SELECT AVG(rating) AS avg_rating, COUNT(*) AS rated
+        FROM query_history
+        WHERE created_at >= :since AND rating IS NOT NULL
+    """), {"since": one_week_ago}).first()
+    user_satisfaction = round(sat.avg_rating * 100, 1) if sat and sat.rated and sat.avg_rating is not None else 100.0
+
     if total_calls == 0:
         return {
             "avgLatency": 0,
             "successRate": 100,
-            "userSatisfaction": round(user_satisfaction, 1),
+            "userSatisfaction": user_satisfaction,
             "totalTokens": 0,
             "totalCalls": 0,
             "timeSeries": []
         }
-        
-    success_calls = sum(1 for m in metrics if m.success == 1)
-    avg_latency = sum(m.latency_ms for m in metrics) / total_calls
-    total_tokens = sum(m.token_count for m in metrics)
-    success_rate = (success_calls / total_calls) * 100
-    
-    # Simple time series grouping by hour
-    # For a real dashboard, a proper GROUP BY with date_trunc is better,
-    # but for simplicity we will group in python
-    series_map = {}
-    for m in metrics:
-        hr = m.timestamp.strftime("%Y-%m-%d %H:00")
-        if hr not in series_map:
-            series_map[hr] = {"time": hr, "latency": 0, "successRate": 0, "tokens": 0, "count": 0, "successes": 0}
-        
-        series_map[hr]["latency"] += m.latency_ms
-        series_map[hr]["tokens"] += m.token_count
-        series_map[hr]["count"] += 1
-        if m.success == 1:
-            series_map[hr]["successes"] += 1
-            
-    time_series = []
-    for hr in sorted(series_map.keys()):
-        d = series_map[hr]
-        time_series.append({
-            "time": hr.split(" ")[1], # Just the hour part for UI
-            "latency": round(d["latency"] / d["count"]),
-            "successRate": round((d["successes"] / d["count"]) * 100),
-            "tokens": d["tokens"],
-            "count": d["count"]
-        })
-        
+
+    success_rate = (agg.success_calls / total_calls) * 100
+
+    # Hourly time series via SQL date_trunc (last 12 hours kept for the UI)
+    rows = db.execute(text("""
+        SELECT date_trunc('hour', timestamp) AS hr,
+               AVG(latency_ms) AS latency,
+               SUM(token_count) AS tokens,
+               COUNT(*) AS count,
+               SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS successes
+        FROM agent_metrics
+        WHERE timestamp >= :since
+        GROUP BY 1
+        ORDER BY 1
+    """), {"since": one_week_ago}).fetchall()
+
+    time_series = [{
+        "time": r.hr.strftime("%H:00"),
+        "latency": round(r.latency or 0),
+        "successRate": round((r.successes / r.count) * 100) if r.count else 0,
+        "tokens": int(r.tokens or 0),
+        "count": r.count,
+    } for r in rows][-12:]
+
     return {
-        "avgLatency": round(avg_latency),
+        "avgLatency": round(agg.avg_latency or 0),
         "successRate": round(success_rate, 1),
-        "userSatisfaction": round(user_satisfaction, 1),
-        "totalTokens": total_tokens,
+        "userSatisfaction": user_satisfaction,
+        "totalTokens": int(agg.total_tokens or 0),
         "totalCalls": total_calls,
-        "timeSeries": time_series[-12:] # Last 12 hours max
+        "timeSeries": time_series
     }

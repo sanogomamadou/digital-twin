@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db.database import get_db
 from db import crud
-from models.schemas import LayoutStateSchema, TwinSummary
+from models.schemas import LayoutStateSchema, TwinSummary, TwinRenameRequest
 from routers.auth import get_current_user
 from db.database import UserDB
 
@@ -90,7 +90,7 @@ def delete_twin(
 @router.patch("/{twin_id}/name", response_model=TwinSummary)
 def rename_twin(
     twin_id: str, 
-    req: __import__('models.schemas', fromlist=['TwinRenameRequest']).TwinRenameRequest, 
+    req: TwinRenameRequest,
     db: Session = Depends(get_db),
     current_user: UserDB = Depends(get_current_user)
 ):

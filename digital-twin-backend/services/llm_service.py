@@ -109,7 +109,10 @@ def _build_llm_from_db():
                 
         model_name = config.model
         temp = config.temperature
-        max_tok = config.max_tokens or None  # None → provider default (no cap)
+        # NOTE: max_tokens is intentionally NOT passed. A single global cap is
+        # unsuitable here — a low value truncates the very verbose Layout Agent
+        # (mesh3D), and a high value increases Groq's token reservation (more
+        # 429s). A per-agent token limit would be the proper fix.
 
         # Route to correct LLM provider
         is_openai = "gpt" in model_name.lower() or "o1" in model_name.lower() or "o3" in model_name.lower()
@@ -126,7 +129,6 @@ def _build_llm_from_db():
                     api_key=key,
                     model=model_name,
                     temperature=temp,
-                    max_tokens=max_tok,
                     max_retries=1
                 )
             elif is_anthropic:
@@ -138,7 +140,6 @@ def _build_llm_from_db():
                     api_key=key,
                     model_name=model_name,
                     temperature=temp,
-                    max_tokens=max_tok,
                     max_retries=1
                 )
             elif is_google:
@@ -149,15 +150,13 @@ def _build_llm_from_db():
                 return ChatGoogleGenerativeAI(
                     google_api_key=key,
                     model=model_name,
-                    temperature=temp,
-                    max_output_tokens=max_tok
+                    temperature=temp
                 )
             else:
                 return ChatGroq(
                     api_key=key,
                     model=model_name,
                     temperature=temp,
-                    max_tokens=max_tok,
                     max_retries=1
                 )
 

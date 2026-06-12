@@ -302,22 +302,6 @@ EXAMPLE: Industrial CNC Lathe (12 parts, professional)
 ]
 
 ═══════════════════════════════════════════════════
-EXAMPLE: Industrial Robotic Arm (10 parts, professional)
-═══════════════════════════════════════════════════
-"parts": [
-  {"geo":"cylinder","pos":[0,0.04,0],"size":[0.4,0.42,0.08,32],"color":"#1f2937","metalness":0.8,"roughness":0.3},
-  {"geo":"cylinder","pos":[0,0.12,0],"size":[0.25,0.25,0.08,24],"color":"#374151","metalness":0.7,"roughness":0.25},
-  {"geo":"box","pos":[0,0.32,0],"size":[0.12,0.32,0.1],"color":"#f59e0b","metalness":0.45,"roughness":0.35},
-  {"geo":"sphere","pos":[0,0.5,0],"size":[0.06],"color":"#9ca3af","metalness":0.9,"roughness":0.15},
-  {"geo":"box","pos":[0.08,0.65,0],"size":[0.08,0.25,0.08],"rot":[0,0,-25],"color":"#f59e0b","metalness":0.45,"roughness":0.35},
-  {"geo":"sphere","pos":[0.15,0.77,0],"size":[0.04],"color":"#6b7280","metalness":0.85,"roughness":0.2},
-  {"geo":"box","pos":[0.22,0.85,0],"size":[0.06,0.15,0.06],"rot":[0,0,-10],"color":"#d97706","metalness":0.5,"roughness":0.3},
-  {"geo":"cylinder","pos":[0.28,0.9,0],"size":[0.02,0.02,0.08,12],"rot":[0,0,-90],"color":"#374151","metalness":0.95,"roughness":0.1},
-  {"geo":"sphere","pos":[0.32,0.9,0],"size":[0.025],"color":"#60a5fa","emissive":"#3b82f6","emissiveIntensity":2.0},
-  {"geo":"box","pos":[-0.25,0.12,0.2],"size":[0.12,0.16,0.12],"color":"#111827","metalness":0.2,"roughness":0.1,"emissive":"#0f172a","emissiveIntensity":0.3}
-]
-
-═══════════════════════════════════════════════════
 SPATIAL RULES
 ═══════════════════════════════════════════════════
 - Grid: row=0, col=0 (top-left) to row=(gridRows-1), col=(gridCols-1).

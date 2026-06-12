@@ -59,10 +59,26 @@ def get_default_source_state():
 
 def get_user_state(db, twin_id: str, user_id: int = None) -> dict:
     from db.crud import get_user_configuration
+    import json
     config = get_user_configuration(db, twin_id, user_id)
     if not config:
-        return get_default_source_state()
-    import json
+        state = get_default_source_state()
+        # A brand-new twin has no config yet. The telemetry source is connected
+        # ONCE via the wizard before any twin exists (stored under the user's
+        # "default" config), so a fresh twin must inherit that global connection
+        # — otherwise the KPI step shows no columns. We copy only the CONNECTION
+        # fields (never the assignments, which stay per-twin) and only for the
+        # user's own default (no cross-tenant leak).
+        if user_id is not None and not str(twin_id).startswith("default"):
+            default_cfg = get_user_configuration(db, "default", user_id)
+            if default_cfg and default_cfg.telemetry_db_url:
+                state["source_type"] = default_cfg.source_type
+                state["telemetry_db_url"] = default_cfg.telemetry_db_url
+                state["telemetry_table"] = default_cfg.telemetry_table
+                state["timestamp_col"] = default_cfg.timestamp_col
+                state["component_id_col"] = default_cfg.component_id_col
+                state["credentials"] = json.loads(default_cfg.credentials_json) if default_cfg.credentials_json else {}
+        return state
     return {
         "domain": config.domain,
         "columns": [],

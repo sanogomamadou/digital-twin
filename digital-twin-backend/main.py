@@ -153,6 +153,13 @@ async def startup():
     asyncio.create_task(kpi_broadcaster(), name="kpi_broadcaster")
     logger.info("📡 WebSocket broadcaster started — ws://localhost:8000/ws/kpis")
 
+    # Capture the main event loop so sync routes (e.g. share-link verify) can
+    # schedule connector start/stop, and reap connectors abandoned by their twin.
+    from routers.data_source import register_event_loop, connector_reaper
+    register_event_loop(asyncio.get_running_loop())
+    asyncio.create_task(connector_reaper(), name="connector_reaper")
+    logger.info("🧹 Connector reaper started (idle connectors stopped after 10 min)")
+
     import threading
     from generate_pg_data import simulate_stream
     

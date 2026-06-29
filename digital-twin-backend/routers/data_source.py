@@ -42,6 +42,73 @@ router = APIRouter(prefix="/source", tags=["Data Source"])
 # ── Shared state ──────────────────────────────────────────────────────────────
 _active_connectors = {}
 
+# Reference to the main asyncio event loop, captured at app startup. Sync routes
+# (e.g. the share-link verify endpoint) run in Starlette's threadpool where there
+# is NO running loop, so they need this to schedule connector start/stop.
+_main_loop = None
+
+# Per-twin timestamp (monotonic) of when the connector first had zero WS clients,
+# used by the idle-connector reaper to avoid leaking connectors forever.
+_idle_since: dict[str, float] = {}
+
+
+def register_event_loop(loop):
+    """Called once from main.py startup to capture the main event loop."""
+    global _main_loop
+    _main_loop = loop
+
+
+def _schedule_coro(coro):
+    """Schedule a connector coroutine (start/stop) on the main event loop,
+    whether we're called from the loop thread (async route) or from a worker
+    thread (sync route in Starlette's threadpool, where there is no running loop).
+
+    The previous code used `asyncio.create_task` and swallowed the RuntimeError
+    raised off-loop — so connectors created from sync routes silently never ran."""
+    import asyncio
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(coro)
+        return
+    except RuntimeError:
+        pass
+    if _main_loop is not None and _main_loop.is_running():
+        asyncio.run_coroutine_threadsafe(coro, _main_loop)
+    else:
+        # No usable loop (should not happen once startup ran) — close the coro
+        # to avoid a "coroutine was never awaited" warning.
+        coro.close()
+        print("[connector] _schedule_coro: no running loop available — skipped")
+
+
+async def connector_reaper(idle_grace_s: float = 600.0, interval_s: float = 60.0):
+    """Periodically stop connectors for twins that have had no WebSocket client
+    for `idle_grace_s` seconds. Prevents the per-twin connector registry from
+    growing unbounded (every new twin spawns a connector that polls the DB every
+    2s). A generous grace period keeps a stream alive across WS reconnect backoff."""
+    import asyncio
+    import time
+    from routers.stream import manager
+    while True:
+        await asyncio.sleep(interval_s)
+        try:
+            now = time.monotonic()
+            for twin_id, pc in list(_active_connectors.items()):
+                if manager.client_count(twin_id) > 0:
+                    _idle_since.pop(twin_id, None)
+                    continue
+                first = _idle_since.setdefault(twin_id, now)
+                if now - first >= idle_grace_s:
+                    try:
+                        await pc.stop()
+                    except Exception:
+                        pass
+                    _active_connectors.pop(twin_id, None)
+                    _idle_since.pop(twin_id, None)
+                    print(f"[reaper] stopped idle connector for twin={twin_id}")
+        except Exception as e:
+            print(f"[reaper] error: {e}")
+
 def get_default_source_state():
     return {
         "domain": "factory",
@@ -398,18 +465,30 @@ async def assign_columns(payload: AssignmentsPayload, twin_id: str, db: Session 
             print(f"[assign] Hot-updated running connector for domain={payload.domain}, {len(new_assignments)} KPIs")
         else:
             # No running connector — stop old one if any and start fresh
-            if _active_connectors.get(twin_id):
-                import asyncio
-                asyncio.create_task(_active_connectors.get(twin_id).stop())
-            
+            old_pc = _active_connectors.get(twin_id)
+            if old_pc:
+                await old_pc.stop()
+
             pc = get_connector_instance(db, twin_id, current_user.id)
             if pc:
-                pc.update_assignments(new_assignments, payload.domain)
+                pc.update_assignments(
+                    new_assignments,
+                    payload.domain,
+                    db_url=user_state.get("telemetry_db_url"),
+                    table_name=user_state.get("telemetry_table") or f"{payload.domain}_data",
+                    timestamp_col=user_state.get("timestamp_col", "timestamp"),
+                    component_id_col=user_state.get("component_id_col", "component_id"),
+                )
                 pc.last_timestamps.clear()
                 _active_connectors[twin_id] = pc
-                import asyncio
-                asyncio.create_task(pc.start())
+                # IMPORTANT: await start() (it is non-blocking — it only schedules
+                # the poll loop). A fire-and-forget `create_task(pc.start())` left
+                # the start coroutine unreferenced, so a freshly-created twin's
+                # connector never actually ran in production → "Live · 0 readings".
+                await pc.start()
                 print(f"[assign] Started new connector for domain={payload.domain}, {len(new_assignments)} KPIs")
+            else:
+                print(f"[assign] No connector could be built for twin={twin_id} (source_type={user_state.get('source_type')})")
     except Exception as e:
         print(f"Failed to notify connector: {e}")
 
@@ -417,8 +496,8 @@ async def assign_columns(payload: AssignmentsPayload, twin_id: str, db: Session 
 
 def apply_assignments_sync(twin_id: str, user_id: int, domain: str, assignments_list: list):
     from db.database import SessionLocal
-    with SessionLocal() as db:
-        user_state = get_user_state(db, twin_id, user_id)
+    db = SessionLocal()
+    user_state = get_user_state(db, twin_id, user_id)
 
     """Re-apply KPI assignments when loading a twin.
     
@@ -458,6 +537,7 @@ def apply_assignments_sync(twin_id: str, user_id: int, domain: str, assignments_
     # Guard: twin has no KPI config — keep existing connector running
     if not new_assignments:
         print(f"[apply_assignments_sync] domain={domain}: no KPI assignments — skipping connector update")
+        db.close()
         return
 
     # ── Use env var for DB URL (reliable, not the shared file which can drift)
@@ -499,14 +579,11 @@ def apply_assignments_sync(twin_id: str, user_id: int, domain: str, assignments_
             existing_pc.last_timestamps.clear()
             _active_connectors[twin_id] = existing_pc
         else:
-            # Stop old one and start fresh
-            if _active_connectors.get(twin_id):
-                import asyncio
-                try:
-                    loop = asyncio.get_running_loop()
-                    loop.create_task(_active_connectors.get(twin_id).stop())
-                except RuntimeError:
-                    pass
+            # Stop old one and start fresh — schedule on the main loop so this
+            # works even when called from a sync route (share-link verify).
+            old_pc = _active_connectors.get(twin_id)
+            if old_pc:
+                _schedule_coro(old_pc.stop())
 
             pc = get_connector_instance(db, twin_id, user_id)
             if pc:
@@ -518,15 +595,12 @@ def apply_assignments_sync(twin_id: str, user_id: int, domain: str, assignments_
                 )
                 pc.last_timestamps.clear()
                 _active_connectors[twin_id] = pc
-                import asyncio
-                try:
-                    loop = asyncio.get_running_loop()
-                    loop.create_task(pc.start())
-                except RuntimeError:
-                    pass
+                _schedule_coro(pc.start())
         print(f"[apply_assignments_sync] domain={domain}: connector updated with {len(new_assignments)} KPIs, table={saved_table}")
     except Exception as e:
         print(f"Failed to notify connector: {e}")
+    finally:
+        db.close()
 
 class ProposeKpisRequest(BaseModel):
     domain: str

@@ -83,7 +83,8 @@ async def _start_connectors():
             
         saved_assignments = state.get("assignments", {})
         domain = state.get("domain", "factory")
-        telemetry_db_url = state.get("telemetry_db_url") or os.getenv(
+        from routers.data_source import safe_telemetry_db_url
+        telemetry_db_url = safe_telemetry_db_url(state.get("telemetry_db_url")) or os.getenv(
             "TELEMETRY_DB_URL",
             "postgresql://postgres:postgrespassword@localhost:5433/telemetry_db",
         )

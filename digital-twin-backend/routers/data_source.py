@@ -356,12 +356,36 @@ def get_schema(twin_id: str, domain: str = None, db: Session = Depends(get_db), 
         "streaming": user_state.get("streaming", False),
     }
 
+def _db_name(url: str) -> str:
+    try:
+        return urlparse(url).path.lstrip("/").split("?")[0]
+    except Exception:
+        return ""
+
+
+def safe_telemetry_db_url(url: str | None) -> str | None:
+    """Guard against a telemetry connection that points at the main application
+    database. The simulator only ever writes telemetry to TELEMETRY_DB_URL, so a
+    config whose telemetry_db_url drifted to the app DB (e.g. inherited from a
+    mis-connected default) would query an empty table → 0 readings. In that case
+    fall back to the real telemetry DB."""
+    env_tele = os.getenv("TELEMETRY_DB_URL")
+    main_db = os.getenv("DATABASE_URL", "")
+    if not url:
+        return env_tele or url
+    if env_tele and main_db and _db_name(url) and _db_name(url) == _db_name(main_db):
+        logger_msg = f"[telemetry] db_url pointed at the app DB ({_db_name(url)}) — redirecting to TELEMETRY_DB_URL"
+        print(logger_msg)
+        return env_tele
+    return url
+
+
 def get_connector_instance(db, twin_id: str, user_id: int):
     user_state = get_user_state(db, twin_id, user_id)
 
     stype = user_state.get("source_type", "postgres")
     config = {
-        "db_url": user_state.get("telemetry_db_url"),
+        "db_url": safe_telemetry_db_url(user_state.get("telemetry_db_url")),
         "table_name": user_state.get("telemetry_table"),
         "timestamp_col": user_state.get("timestamp_col"),
         "component_id_col": user_state.get("component_id_col"),
@@ -412,6 +436,8 @@ def get_active_connectors():
 async def assign_columns(payload: AssignmentsPayload, twin_id: str, db: Session = Depends(get_db), current_user: UserDB = Depends(get_current_user)):
     user_id = current_user.id
     user_state = get_user_state(db, twin_id, user_id)
+    # Never let telemetry point at the app DB (drifts via inheritance → 0 readings)
+    user_state["telemetry_db_url"] = safe_telemetry_db_url(user_state.get("telemetry_db_url"))
 
     global _active_connectors
     # REPLACE all assignments — the frontend sends the complete set for the current twin.
@@ -541,7 +567,7 @@ def apply_assignments_sync(twin_id: str, user_id: int, domain: str, assignments_
         return
 
     # ── Use env var for DB URL (reliable, not the shared file which can drift)
-    saved_db_url = user_state.get("telemetry_db_url") or os.getenv("TELEMETRY_DB_URL", "postgresql://postgres:postgrespassword@localhost:5433/telemetry_db")
+    saved_db_url = safe_telemetry_db_url(user_state.get("telemetry_db_url")) or os.getenv("TELEMETRY_DB_URL", "postgresql://postgres:postgrespassword@localhost:5433/telemetry_db")
     saved_table  = user_state.get("telemetry_table") or f"{domain}_data"
 
     user_state["assignments"]       = new_assignments

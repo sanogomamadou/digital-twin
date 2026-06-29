@@ -203,3 +203,35 @@ def stream_status():
         "latest_kpis": len(manager._latest),
         "latest_snapshot": [],
     }
+
+
+@router.get("/stream/debug")
+def stream_debug():
+    """Diagnostic dump of the live connector/stream state. No secrets returned."""
+    from routers.data_source import get_active_connectors
+    conns = []
+    for twin_id, pc in list(get_active_connectors().items()):
+        task = getattr(pc, "_task", None)
+        db_url = getattr(pc, "db_url", "") or ""
+        conns.append({
+            "twin_id": twin_id,
+            "running": getattr(pc, "_running", None),
+            "n_assignments": len(getattr(pc, "assignments", {}) or {}),
+            "table": getattr(pc, "get_table_name", lambda: None)() if hasattr(pc, "get_table_name") else getattr(pc, "table_name", None),
+            "poll_interval": getattr(pc, "poll_interval", None),
+            "db_host": db_url.split("@")[-1].split("/")[0] if "@" in db_url else db_url[:30],
+            "clients": manager.client_count(twin_id),
+            "task_done": task.done() if task else None,
+            "task_cancelled": task.cancelled() if task else None,
+            "poll_count": getattr(pc, "_poll_count", None),
+            "emit_count": getattr(pc, "_emit_count", None),
+            "last_fetch_n": getattr(pc, "_last_fetch_n", None),
+            "last_error": getattr(pc, "_last_error", None),
+            "last_emit_at": getattr(pc, "_last_emit_at", None),
+        })
+    return {
+        "n_active_connectors": len(conns),
+        "connectors": conns,
+        "latest_cache_twins": list(manager._latest.keys()),
+        "client_twins": {tw: len(s) for tw, s in manager._clients.items()},
+    }

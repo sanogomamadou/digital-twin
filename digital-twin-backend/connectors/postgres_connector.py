@@ -30,6 +30,12 @@ class PostgresConnector(BaseConnector):
         self.poll_interval = float(config.get("poll_interval", 2.0))
         self.user_id = config.get("user_id", 1)
         self.last_timestamps = {}  # Keep track of last seen row per component
+        # ── Lightweight diagnostics (exposed via /stream/debug) ──
+        self._poll_count = 0
+        self._emit_count = 0
+        self._last_fetch_n = None
+        self._last_error = None
+        self._last_emit_at = None
 
     def update_assignments(self, assignments: dict, domain: str, db_url: str = None, table_name: str = None, timestamp_col: str = None, component_id_col: str = None):
         self.assignments = assignments
@@ -159,25 +165,32 @@ class PostgresConnector(BaseConnector):
 
         while self._running:
             await asyncio.sleep(self.poll_interval)
+            self._poll_count += 1
 
             if not self.assignments:
+                self._last_error = "no assignments"
                 continue
 
             # Run the blocking psycopg2 work in a thread so the event loop stays free
             try:
                 readings = await loop.run_in_executor(None, self._fetch_readings)
             except Exception as e:
+                self._last_error = f"poll: {e}"
                 logger.error(f"PostgresConnector poll error: {e}")
                 continue
 
             if readings is None:
+                self._last_error = "db connection failed"
                 if not outage_logged:
                     logger.warning("PostgresConnector: Waiting for DB connection...")
                     outage_logged = True
                 continue
 
             outage_logged = False
+            self._last_fetch_n = len(readings)
 
             for reading in readings:
                 await self.emit(reading)
+                self._emit_count += 1
+                self._last_emit_at = datetime.now(timezone.utc).isoformat()
                 logger.info(f"Emitted KPI {reading.kpi_name} = {reading.value} for {reading.component_id}")
